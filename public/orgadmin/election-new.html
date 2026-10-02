@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>New Election — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .preset-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .preset-btn {
+    background: var(--ivory-200);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-full);
+    padding: 6px 14px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--forest-800);
+    cursor: pointer;
+    transition: all 140ms ease;
+  }
+  .preset-btn:hover {
+    background: var(--forest-800);
+    color: #fff;
+    border-color: var(--forest-800);
+  }
+  .timeline-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .timeline-grid { grid-template-columns: 1fr; }
+  }
+  .validation-checklist {
+    background: var(--ivory-100);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 0.85rem;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    color: var(--ink-600);
+  }
+  .check-item.valid { color: var(--success); font-weight: 600; }
+  .check-item.invalid { color: var(--danger); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell" style="max-width:680px">
+  <div style="margin-bottom: 12px">
+    <a href="/orgadmin/dashboard.html" class="meta" style="display:inline-flex;align-items:center;gap:6px">
+      &larr; Back to Elections
+    </a>
+  </div>
+
+  <div class="page-head" style="margin-bottom:20px">
+    <div>
+      <span class="badge badge-draft"><span class="badge-dot"></span> Draft Creator</span>
+      <h1 style="margin-top:6px">Create New Election</h1>
+      <p class="meta">Configure candidate eligibility rules and the official voting window.</p>
+    </div>
+  </div>
+
+  <div id="alert-slot"></div>
+
+  <form id="election-form">
+    <!-- General Information -->
+    <fieldset>
+      <legend>General Details</legend>
+      <div class="field">
+        <label for="title">Election Title *</label>
+        <input type="text" id="title" required placeholder="e.g. Guild Representative Council 2026/2027">
+        <div class="hint">The public title shown on ballots and announcement boards.</div>
+      </div>
+
+      <div class="field">
+        <label for="position">Contested Position / Office *</label>
+        <input type="text" id="position" required placeholder="e.g. Guild President, Department Rep, Treasurer">
+      </div>
+
+      <div class="field">
+        <label for="description">Election Description & Manifesto Guidelines</label>
+        <textarea id="description" placeholder="Describe the responsibilities of this office, term length, and candidate expectations…"></textarea>
+      </div>
+    </fieldset>
+
+    <!-- Candidate Eligibility Rules -->
+    <fieldset>
+      <legend>Candidate Eligibility Criteria</legend>
+      <div class="field">
+        <label for="min-days">Minimum Account Membership Age (Days)</label>
+        <input type="number" id="min-days" value="0" min="0" placeholder="0">
+        <div class="hint">0 = no minimum required. Checked automatically when someone applies to run.</div>
+      </div>
+
+      <div class="field">
+        <label for="departments">Restricted Departments (optional)</label>
+        <input type="text" id="departments" placeholder="e.g. Computing, Engineering, Business (leave blank for open)">
+        <div class="hint">Comma-separated list. Applicants must match one of these departments.</div>
+      </div>
+
+      <div class="field">
+        <label for="criteria">Written Criteria & Rules (Checked manually by org admin)</label>
+        <textarea id="criteria" placeholder="e.g. Must have a minimum CGPA of 3.0, no ongoing disciplinary hearings, and submit 2 recommendations."></textarea>
+      </div>
+    </fieldset>
+
+    <!-- Timeline & Schedule -->
+    <fieldset>
+      <legend>Official Timeline & Schedule</legend>
+      <p class="meta" style="margin-bottom:12px">Quick Schedule Presets:</p>
+      <div class="preset-pills">
+        <button type="button" class="preset-btn" data-preset="fast">⚡ Fast 48-Hour</button>
+        <button type="button" class="preset-btn" data-preset="standard">📅 Standard 5-Day</button>
+        <button type="button" class="preset-btn" data-preset="extended">🏛️ Extended 10-Day</button>
+      </div>
+
+      <div class="timeline-grid">
+        <div class="field">
+          <label for="app-open">Applications Open *</label>
+          <input type="datetime-local" id="app-open" required>
+        </div>
+        <div class="field">
+          <label for="app-close">Applications Close *</label>
+          <input type="datetime-local" id="app-close" required>
+        </div>
+      </div>
+
+      <div class="timeline-grid">
+        <div class="field">
+          <label for="vote-open">Voting Opens *</label>
+          <input type="datetime-local" id="vote-open" required>
+        </div>
+        <div class="field">
+          <label for="vote-close">Voting Closes *</label>
+          <input type="datetime-local" id="vote-close" required>
+        </div>
+      </div>
+
+      <!-- Real-time Schedule Validation Checklist -->
+      <div class="validation-checklist" id="schedule-checklist">
+        <div class="check-item" id="check-app-order">&bull; Applications open must be before applications close</div>
+        <div class="check-item" id="check-gap-order">&bull; Applications must close before or when voting opens</div>
+        <div class="check-item" id="check-vote-order">&bull; Voting open must be before voting close</div>
+      </div>
+    </fieldset>
+
+    <div style="display:flex;gap:12px;margin-top:24px;align-items:center">
+      <button class="btn btn-primary" type="submit" id="submit-btn">Save & Create Draft Election</button>
+      <a class="btn btn-ghost" href="/orgadmin/dashboard.html">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+requireSession(["org_admin"]);
+renderTopbar("/orgadmin/dashboard.html");
+
+const alertSlot = document.getElementById("alert-slot");
+const form = document.getElementById("election-form");
+const submitBtn = document.getElementById("submit-btn");
+
+const appOpenInput = document.getElementById("app-open");
+const appCloseInput = document.getElementById("app-close");
+const voteOpenInput = document.getElementById("vote-open");
+const voteCloseInput = document.getElementById("vote-close");
+
+// Convert a Date to datetime-local input string YYYY-MM-DDTHH:MM
+function toInputDate(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Preset application
+function applyPreset(type) {
+  const now = new Date();
+  now.setMinutes(0, 0, 0); // round to current hour
+
+  let appOpen = new Date(now.getTime() + 60 * 60 * 1000); // 1h from now
+  let appClose, voteOpen, voteClose;
+
+  if (type === "fast") {
+    // 24h apps, 24h voting
+    appClose = new Date(appOpen.getTime() + 24 * 3600 * 1000);
+    voteOpen = new Date(appClose.getTime());
+    voteClose = new Date(voteOpen.getTime() + 24 * 3600 * 1000);
+  } else if (type === "extended") {
+    // 7 days apps, 1 day review, 3 days voting
+    appClose = new Date(appOpen.getTime() + 7 * 24 * 3600 * 1000);
+    voteOpen = new Date(appClose.getTime() + 24 * 3600 * 1000);
+    voteClose = new Date(voteOpen.getTime() + 3 * 24 * 3600 * 1000);
+  } else {
+    // Standard 5-day: 3 days apps, 2 days voting
+    appClose = new Date(appOpen.getTime() + 3 * 24 * 3600 * 1000);
+    voteOpen = new Date(appClose.getTime());
+    voteClose = new Date(voteOpen.getTime() + 2 * 24 * 3600 * 1000);
+  }
+
+  appOpenInput.value = toInputDate(appOpen);
+  appCloseInput.value = toInputDate(appClose);
+  voteOpenInput.value = toInputDate(voteOpen);
+  voteCloseInput.value = toInputDate(voteClose);
+
+  validateTimeline();
+}
+
+function validateTimeline() {
+  const tAppOpen = appOpenInput.value ? new Date(appOpenInput.value).getTime() : 0;
+  const tAppClose = appCloseInput.value ? new Date(appCloseInput.value).getTime() : 0;
+  const tVoteOpen = voteOpenInput.value ? new Date(voteOpenInput.value).getTime() : 0;
+  const tVoteClose = voteCloseInput.value ? new Date(voteCloseInput.value).getTime() : 0;
+
+  const check1 = document.getElementById("check-app-order");
+  const check2 = document.getElementById("check-gap-order");
+  const check3 = document.getElementById("check-vote-order");
+
+  let isValid = true;
+
+  if (tAppOpen && tAppClose) {
+    if (tAppOpen < tAppClose) {
+      check1.className = "check-item valid";
+      check1.innerHTML = "✓ Applications window is ordered correctly";
+    } else {
+      check1.className = "check-item invalid";
+      check1.innerHTML = "✕ Applications open must be before applications close";
+      isValid = false;
+    }
+  }
+
+  if (tAppClose && tVoteOpen) {
+    if (tAppClose <= tVoteOpen) {
+      check2.className = "check-item valid";
+      check2.innerHTML = "✓ Applications close before or when voting starts";
+    } else {
+      check2.className = "check-item invalid";
+      check2.innerHTML = "✕ Voting cannot open before applications close";
+      isValid = false;
+    }
+  }
+
+  if (tVoteOpen && tVoteClose) {
+    if (tVoteOpen < tVoteClose) {
+      check3.className = "check-item valid";
+      check3.innerHTML = "✓ Voting window is ordered correctly";
+    } else {
+      check3.className = "check-item invalid";
+      check3.innerHTML = "✕ Voting open must be before voting close";
+      isValid = false;
+    }
+  }
+
+  return isValid;
+}
+
+[appOpenInput, appCloseInput, voteOpenInput, voteCloseInput].forEach(inp => {
+  inp.addEventListener("input", validateTimeline);
+  inp.addEventListener("change", validateTimeline);
+});
+
+document.querySelectorAll("[data-preset]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    applyPreset(btn.dataset.preset);
+    showToast(`Applied ${btn.textContent.trim()} schedule preset`, "info");
+  });
+});
+
+// Initialize with standard preset
+applyPreset("standard");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  alertSlot.innerHTML = "";
+
+  if (!validateTimeline()) {
+    showToast("Please check timeline dates order before submitting.", "error");
+    return;
+  }
+
+  const departments = document.getElementById("departments").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const payload = {
+    title: document.getElementById("title").value.trim(),
+    position_name: document.getElementById("position").value.trim(),
+    description: document.getElementById("description").value.trim(),
+    eligibility_rules: {
+      min_account_age_days: Number(document.getElementById("min-days").value) || 0,
+      allowed_departments: departments,
+      criteria_text: document.getElementById("criteria").value.trim(),
+    },
+    application_open_at: new Date(appOpenInput.value).toISOString(),
+    application_close_at: new Date(appCloseInput.value).toISOString(),
+    voting_open_at: new Date(voteOpenInput.value).toISOString(),
+    voting_close_at: new Date(voteCloseInput.value).toISOString(),
+  };
+
+  setButtonBusy(submitBtn, true, "Creating Election…");
+  try {
+    const election = await api("POST", "/elections", payload);
+    showToast("Election created successfully!", "success");
+    window.location.href = `/orgadmin/election.html?id=${election.id}`;
+  } catch (err) {
+    alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    setButtonBusy(submitBtn, false);
+    showToast(err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

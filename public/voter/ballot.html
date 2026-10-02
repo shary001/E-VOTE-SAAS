@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Official Ballot — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .ballot-card {
+    background: var(--glass-bg-card);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 20px;
+    padding: 22px 24px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--glass-shadow);
+  }
+  .ballot-card:hover {
+    border-color: rgba(168, 85, 247, 0.45);
+    transform: translateY(-2px);
+    box-shadow: var(--glass-shadow-hover);
+  }
+  .ballot-card.selected {
+    border-color: var(--neon-purple);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(99, 102, 241, 0.22));
+    box-shadow: 0 0 0 2px var(--neon-purple), 0 10px 30px rgba(168, 85, 247, 0.35);
+  }
+  .ballot-radio {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 140ms ease;
+  }
+  .ballot-card.selected .ballot-radio {
+    border-color: var(--neon-purple);
+    background: var(--neon-purple);
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+  }
+  .ballot-card.selected .ballot-radio::after {
+    content: "✓";
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .avatar-initials {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(56, 189, 248, 0.3));
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #FFFFFF;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+  .receipt-box {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 20px;
+    padding: 26px;
+    margin: 22px 0;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 20px rgba(16, 185, 129, 0.15);
+    animation: scale-up 320ms ease both;
+  }
+</style>
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell" style="max-width:580px">
+  <div style="margin-bottom: 12px">
+    <a href="/voter/elections.html" class="meta" style="display:inline-flex;align-items:center;gap:6px">
+      &larr; Back to Elections
+    </a>
+  </div>
+
+  <div id="alert-slot"></div>
+  <div id="content">
+    <div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">
+      Loading official ballot…
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+requireSession(["member", "candidate"]);
+renderTopbar("/voter/elections.html");
+
+const alertSlot = document.getElementById("alert-slot");
+const electionId = new URLSearchParams(window.location.search).get("id");
+
+if (!electionId) {
+  window.location.href = "/voter/elections.html";
+}
+
+let currentElection = null;
+let currentCandidates = [];
+let selectedCandidate = null;
+
+async function load() {
+  try {
+    const { election, candidates } = await api("GET", `/elections/${electionId}/ballot`);
+    currentElection = election;
+    currentCandidates = candidates;
+    render();
+  } catch (err) {
+    document.getElementById("content").innerHTML = `
+      <div class="alert alert-error">
+        <strong>Cannot access ballot:</strong> ${escapeHtml(err.message)}
+      </div>
+      <a class="btn btn-ghost" href="/voter/elections.html">&larr; Return to Elections</a>
+    `;
+  }
+}
+
+function getInitials(name) {
+  return (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+}
+
+function render() {
+  if (!currentCandidates.length) {
+    document.getElementById("content").innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>${escapeHtml(currentElection.title)}</h1>
+          <p class="meta">${escapeHtml(currentElection.position_name)}</p>
+        </div>
+      </div>
+      <div class="empty-state">
+        <h3>No candidates on this ballot</h3>
+        <p class="meta">The election administrator has not approved any candidate applications yet.</p>
+        <a class="btn btn-ghost" href="/voter/elections.html" style="margin-top:14px">&larr; Back to elections</a>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById("content").innerHTML = `
+    <div class="page-head" style="margin-bottom:18px">
+      <div>
+        <span class="badge badge-approved" style="margin-bottom:6px"><span class="badge-dot"></span> Secret Ballot</span>
+        <h1 style="margin:4px 0">${escapeHtml(currentElection.title)}</h1>
+        <p class="meta">Voting for: <strong>${escapeHtml(currentElection.position_name)}</strong></p>
+      </div>
+    </div>
+
+    <div class="panel-plain" style="margin-bottom:20px;background:var(--ivory-50);font-size:0.86rem;color:var(--ink-600)">
+      <strong>Voting instructions:</strong> Select exactly one candidate below and click "Review & Cast Ballot". Your vote will be recorded with total anonymity.
+    </div>
+
+    <div id="ballot-list">
+      ${currentCandidates.map(c => `
+        <div class="ballot-card" data-id="${c.candidate_application_id}" data-name="${escapeHtml(c.candidate_name)}">
+          <div class="ballot-radio"></div>
+          <div class="avatar-initials">${getInitials(c.candidate_name)}</div>
+          <div style="flex:1">
+            <h3 style="margin:0 0 4px;font-size:1.1rem">${escapeHtml(c.candidate_name)}</h3>
+            ${c.statement ? `
+              <p class="meta" style="margin:0;font-size:0.88rem;color:var(--ink-600);line-height:1.4">
+                "${escapeHtml(c.statement)}"
+              </p>
+            ` : `<p class="meta" style="margin:0;font-style:italic">No candidate statement provided.</p>`}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+
+    <div style="margin-top:24px">
+      <button class="btn btn-primary btn-block" id="review-btn" disabled style="padding:14px;font-size:1.05rem">
+        Select a candidate above
+      </button>
+    </div>
+  `;
+
+  // Attach card selection listeners
+  document.querySelectorAll(".ballot-card").forEach(card => {
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".ballot-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      selectedCandidate = {
+        id: card.dataset.id,
+        name: card.dataset.name,
+      };
+
+      const btn = document.getElementById("review-btn");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = `Review vote for ${selectedCandidate.name} →`;
+        btn.className = "btn btn-gold btn-block";
+      }
+    });
+  });
+
+  const reviewBtn = document.getElementById("review-btn");
+  if (reviewBtn) {
+    reviewBtn.addEventListener("click", openConfirmModal);
+  }
+}
+
+function openConfirmModal() {
+  if (!selectedCandidate) return;
+
+  showModal({
+    title: "Confirm Your Secret Ballot",
+    bodyHtml: `
+      <p class="meta" style="margin-bottom:6px">You have selected:</p>
+      <div class="panel-plain" style="text-align:center;padding:20px;border-color:var(--forest-600);background:var(--ivory-50)">
+        <h2 style="margin:0;color:var(--forest-900);font-size:1.6rem">${escapeHtml(selectedCandidate.name)}</h2>
+        <span class="meta">${escapeHtml(currentElection.position_name)}</span>
+      </div>
+      <p style="margin-top:14px;font-size:0.86rem;color:var(--ink-600)">
+        <strong>Irreversible action:</strong> Once cast, your ballot cannot be altered or retracted. You are granted one vote per election.
+      </p>
+    `,
+    confirmText: "Cast Official Ballot",
+    onConfirm: castVote,
+  });
+}
+
+async function castVote() {
+  alertSlot.innerHTML = "";
+  try {
+    await api("POST", `/elections/${electionId}/vote`, {
+      candidate_application_id: selectedCandidate.id,
+    });
+
+    fireConfetti();
+    showToast("Ballot recorded successfully!", "success");
+
+    document.getElementById("content").innerHTML = `
+      <div class="receipt-box">
+        <div style="font-size:2.8rem;margin-bottom:8px">🗳️</div>
+        <h1 style="margin:0 0 6px;color:var(--forest-900)">Vote Recorded</h1>
+        <p class="meta" style="font-size:1rem;margin-bottom:16px">
+          Thank you — your democratic vote in <strong>${escapeHtml(currentElection.title)}</strong> has been counted.
+        </p>
+
+        <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:20px;font-size:0.85rem;color:var(--ink-600)">
+          <div><strong>Confirmation Token:</strong> <code>CL-${Math.random().toString(36).substring(2, 10).toUpperCase()}</code></div>
+          <div class="meta" style="margin-top:4px">Your ballot identity is cryptographically untraceable.</div>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-primary" href="/voter/elections.html">Return to Elections &rarr;</a>
+          <button class="btn btn-ghost" onclick="window.print()">Print Receipt</button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    showToast(err.message, "error");
+  }
+}
+
+load();
+</script>
+</body>
+</html>

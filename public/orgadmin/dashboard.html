@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Organization Dashboard — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell">
+  <div id="org-status-banner"></div>
+
+  <div class="page-head">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span class="badge badge-approved" id="org-status-pill">Organization Active</span>
+        <span class="meta" id="org-name-header"></span>
+      </div>
+      <h1>Elections Management</h1>
+      <p class="meta">Configure candidate eligibility, review applications, and administer democratic ballots.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost btn-sm" href="/orgadmin/roster.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Members Roster
+      </a>
+      <button class="btn btn-primary" id="new-election-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create New Election
+      </button>
+    </div>
+  </div>
+
+  <div id="alert-slot"></div>
+
+  <!-- KPI Metrics -->
+  <div class="stat-grid">
+    <div class="stat">
+      <span class="n" id="stat-total-elections">—</span>
+      <span class="label">Total Elections</span>
+      <span class="subtext" id="stat-elections-sub">Created to date</span>
+    </div>
+    <div class="stat">
+      <span class="n" id="stat-live-voting" style="color:var(--success)">—</span>
+      <span class="label">Voting Open Now</span>
+      <span class="subtext">Accepting ballots</span>
+    </div>
+    <div class="stat">
+      <span class="n" id="stat-pending-apps" style="color:var(--warning)">—</span>
+      <span class="label">Pending Applications</span>
+      <span class="subtext">Requires admin review</span>
+    </div>
+    <div class="stat">
+      <span class="n" id="stat-roster-total">—</span>
+      <span class="label">Eligible Members</span>
+      <span class="subtext" id="stat-roster-sub">Voters & candidates</span>
+    </div>
+    <div class="stat">
+      <span class="n" id="stat-ballots-total" style="color:var(--gold-600)">—</span>
+      <span class="label">Ballots Cast</span>
+      <span class="subtext">Across all elections</span>
+    </div>
+  </div>
+
+  <!-- Charts & Visual Pipeline Grid -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Elections Pipeline</h3>
+        <span class="meta">Status</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-org-elections" height="200"></canvas>
+      </div>
+      <div class="chart-legend" id="legend-org-elections"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Candidate Applications</h3>
+        <span class="meta">Review Funnel</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-org-apps" height="200"></canvas>
+      </div>
+      <div class="chart-legend" id="legend-org-apps"></div>
+    </div>
+
+    <div class="chart-card" style="align-items:center;justify-content:center;text-align:center">
+      <div class="chart-card-header" style="width:100%">
+        <h3>Voter Turnout Rate</h3>
+        <span class="meta">Participation</span>
+      </div>
+      <div class="chart-canvas-wrap" style="flex-direction:column;gap:8px">
+        <canvas id="chart-org-turnout" width="160" height="130"></canvas>
+        <span class="meta" id="turnout-caption">Active voting turnout</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elections Table with Filters -->
+  <div style="margin-top:36px">
+    <div class="page-head" style="margin-bottom:14px">
+      <h2>Elections</h2>
+      <div class="filter-toolbar" style="margin-bottom:0">
+        <div class="filter-search">
+          <svg class="filter-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="election-search" placeholder="Search by title, position…">
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button type="button" class="tab-btn active" data-el-filter="all">All Elections <span class="count-pill" id="pill-el-all">0</span></button>
+      <button type="button" class="tab-btn" data-el-filter="voting_open">Live Voting <span class="count-pill" id="pill-el-voting">0</span></button>
+      <button type="button" class="tab-btn" data-el-filter="accepting_applications">Applications Open <span class="count-pill" id="pill-el-apps">0</span></button>
+      <button type="button" class="tab-btn" data-el-filter="draft">Drafts <span class="count-pill" id="pill-el-draft">0</span></button>
+      <button type="button" class="tab-btn" data-el-filter="closed">Closed <span class="count-pill" id="pill-el-closed">0</span></button>
+    </div>
+
+    <div class="table-wrap panel-plain">
+      <table>
+        <thead>
+          <tr>
+            <th>Election & Position</th>
+            <th>Stage</th>
+            <th>Applications</th>
+            <th>Candidates</th>
+            <th>Ballots Cast</th>
+            <th>Voting Window</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="elections-body">
+          <tr><td colspan="7" class="empty-state">Loading elections…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+const user = requireSession(["org_admin"]);
+renderTopbar("/orgadmin/dashboard.html");
+
+let rawElections = [];
+let currentFilter = "all";
+
+if (user.organization_status !== "active") {
+  document.getElementById("org-status-pill").className = "badge badge-pending";
+  document.getElementById("org-status-pill").textContent = `Organization ${user.organization_status}`;
+  document.getElementById("org-status-banner").innerHTML = `
+    <div class="alert alert-warning">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>
+        <strong>Organization Pending Approval:</strong> Your organization is currently <em>${escapeHtml(user.organization_status)}</em>.
+        You can draft elections, but they cannot accept candidate applications or open voting until a platform super administrator approves your organization.
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById("new-election-btn").addEventListener("click", () => {
+  window.location.href = "/orgadmin/election-new.html";
+});
+
+async function load() {
+  try {
+    const [elections, overview] = await Promise.all([
+      api("GET", "/elections"),
+      api("GET", "/orgadmin/overview"),
+    ]);
+
+    rawElections = elections;
+
+    if (overview.organization) {
+      document.getElementById("org-name-header").textContent = `· ${overview.organization.name}`;
+    }
+
+    // Render KPIs
+    animateNumber(document.getElementById("stat-total-elections"), 0, overview.elections.total);
+    animateNumber(document.getElementById("stat-live-voting"), 0, overview.elections.voting_open);
+    animateNumber(document.getElementById("stat-pending-apps"), 0, overview.applications.pending);
+    animateNumber(document.getElementById("stat-roster-total"), 0, overview.roster.total_members);
+    animateNumber(document.getElementById("stat-ballots-total"), 0, overview.total_ballots_cast);
+
+    document.getElementById("stat-elections-sub").textContent = `${overview.elections.draft} draft · ${overview.elections.closed} closed`;
+    document.getElementById("stat-roster-sub").textContent = `${overview.roster.candidate_count} candidates · ${overview.roster.voter_count} voters`;
+
+    // Filter pill counts
+    document.getElementById("pill-el-all").textContent = elections.length;
+    document.getElementById("pill-el-voting").textContent = overview.elections.voting_open;
+    document.getElementById("pill-el-apps").textContent = overview.elections.accepting_applications;
+    document.getElementById("pill-el-draft").textContent = overview.elections.draft;
+    document.getElementById("pill-el-closed").textContent = overview.elections.closed;
+
+    // Render charts
+    renderCharts(overview);
+    renderTable();
+
+  } catch (err) {
+    showToast(err.message || "Failed to load dashboard data", "error");
+  }
+}
+
+function renderCharts(overview) {
+  // 1. Elections Pipeline
+  const el = overview.elections;
+  renderDonutChart("chart-org-elections", {
+    labels: ["Live Voting", "Applications Open", "Draft", "Closed"],
+    data: [el.voting_open, el.accepting_applications, el.draft, el.closed],
+    colors: ["#34D399", "#A855F7", "#64748B", "#38BDF8"],
+    centerText: String(el.total),
+    centerSubtext: "Elections",
+  });
+  document.getElementById("legend-org-elections").innerHTML = `
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#34D399"></span> Live (${el.voting_open})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#A855F7"></span> Apps (${el.accepting_applications})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#64748B"></span> Draft (${el.draft})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#38BDF8"></span> Closed (${el.closed})</span>
+  `;
+
+  // 2. Applications Funnel
+  const app = overview.applications;
+  const totalApps = app.pending + app.approved + app.rejected;
+  renderDonutChart("chart-org-apps", {
+    labels: ["Pending", "Approved", "Rejected"],
+    data: [app.pending, app.approved, app.rejected],
+    colors: ["#F59E0B", "#34D399", "#F87171"],
+    centerText: String(totalApps),
+    centerSubtext: "Applicants",
+  });
+  document.getElementById("legend-org-apps").innerHTML = `
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#F59E0B"></span> Pending (${app.pending})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#34D399"></span> Approved (${app.approved})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#F87171"></span> Rejected (${app.rejected})</span>
+  `;
+
+  // 3. Voter Turnout Gauge
+  const rosterCount = overview.roster.total_members || 1;
+  const ballots = overview.total_ballots_cast || 0;
+  const activeElections = overview.elections.voting_open + overview.elections.closed || 1;
+  const avgTurnout = Math.min(100, Math.round((ballots / (rosterCount * activeElections)) * 100));
+
+  renderTurnoutGauge("chart-org-turnout", {
+    percentage: avgTurnout,
+    label: "Avg Turnout",
+  });
+  document.getElementById("turnout-caption").textContent = `${ballots} ballots across ${overview.elections.total} elections`;
+}
+
+function renderTable() {
+  const search = (document.getElementById("election-search").value || "").toLowerCase().trim();
+  const filtered = rawElections.filter(e => {
+    if (currentFilter !== "all" && e.status !== currentFilter) return false;
+    if (search) {
+      const matchTitle = (e.title || "").toLowerCase().includes(search);
+      const matchPos = (e.position_name || "").toLowerCase().includes(search);
+      if (!matchTitle && !matchPos) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById("elections-body");
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No elections found matching criteria.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(e => `
+    <tr>
+      <td>
+        <a href="/orgadmin/election.html?id=${e.id}" style="color:var(--forest-950);font-weight:700;font-size:0.98rem">
+          ${escapeHtml(e.title)}
+        </a>
+        <br>
+        <span class="meta">${escapeHtml(e.position_name)}</span>
+      </td>
+      <td>
+        <span class="badge badge-${statusBadge(e.status)} ${e.status === 'voting_open' ? 'badge-pulse' : ''}">
+          <span class="badge-dot"></span> ${stageLabel(e.status)}
+        </span>
+      </td>
+      <td>
+        ${Number(e.pending_applications) > 0
+          ? `<span class="badge badge-pending" style="font-weight:700">${e.pending_applications} to review</span>`
+          : `<span class="meta">${e.pending_applications || 0} pending</span>`}
+      </td>
+      <td><strong>${e.approved_candidates}</strong></td>
+      <td>
+        <strong style="color:var(--forest-800)">${Number(e.ballots_cast).toLocaleString()}</strong>
+      </td>
+      <td>
+        <div class="meta" style="font-size:0.82rem;line-height:1.4">
+          <span>${fmtDate(e.voting_open_at)}</span><br>
+          <span style="opacity:0.7">to ${fmtDate(e.voting_close_at)}</span>
+        </div>
+      </td>
+      <td style="text-align:right">
+        <div style="display:inline-flex;gap:6px;justify-content:flex-end">
+          <a class="btn btn-sm btn-ghost" href="/orgadmin/election.html?id=${e.id}">Manage</a>
+          ${e.results_published ? `<a class="btn btn-sm btn-primary" href="/results.html?id=${e.id}">Results</a>` : ""}
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function statusBadge(s) {
+  return { draft: "draft", accepting_applications: "pending", voting_open: "open", closed: "closed" }[s] || "draft";
+}
+
+function stageLabel(s) {
+  return {
+    draft: "Draft",
+    accepting_applications: "Applications Open",
+    voting_open: "Live Voting",
+    closed: "Closed",
+  }[s] || s;
+}
+
+// Search and filter listeners
+document.getElementById("election-search").addEventListener("input", renderTable);
+document.querySelectorAll("[data-el-filter]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-el-filter]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.elFilter;
+    renderTable();
+  });
+});
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Platform Overview — Civic Ledger Super Admin</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell">
+  <div class="page-head">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span class="badge badge-approved badge-pulse"><span class="badge-dot"></span> Platform Live</span>
+        <span class="meta" id="live-time"></span>
+      </div>
+      <h1>Platform Administration</h1>
+      <p class="meta">Global oversight, organization gatekeeping, and cryptographic audit logs.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-sm" id="refresh-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-ghost btn-sm" id="export-orgs-btn">Export Organizations</button>
+      <button class="btn btn-ghost btn-sm" id="export-audit-btn">Export Audit Log</button>
+      <button class="btn btn-primary btn-sm" id="new-org-btn">+ Provision Organization</button>
+    </div>
+  </div>
+
+  <div id="alert-slot"></div>
+
+  <!-- KPI Metric Cards -->
+  <div class="stat-grid" id="stats">
+    <div class="stat"><span class="n" id="stat-orgs">—</span><span class="label">Total Organizations</span><span class="subtext" id="stat-orgs-sub">Active vs Pending</span></div>
+    <div class="stat"><span class="n" id="stat-pending" style="color:var(--warning)">—</span><span class="label">Awaiting Approval</span><span class="subtext">Requires platform admin action</span></div>
+    <div class="stat"><span class="n" id="stat-voting" style="color:var(--success)">—</span><span class="label">Live Voting Now</span><span class="subtext" id="stat-elections-sub">Across all organizations</span></div>
+    <div class="stat"><span class="n" id="stat-ballots" style="color:var(--gold-600)">—</span><span class="label">Ballots Cast</span><span class="subtext">Platform-wide participation</span></div>
+    <div class="stat"><span class="n" id="stat-users">—</span><span class="label">Registered Accounts</span><span class="subtext" id="stat-users-sub">Voters & candidates</span></div>
+  </div>
+
+  <!-- Interactive Charts Grid -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Organization Status</h3>
+        <span class="meta">Tenants</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-orgs" height="220"></canvas>
+      </div>
+      <div class="chart-legend" id="legend-orgs"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Elections by Stage</h3>
+        <span class="meta">Lifecycle</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-elections" height="220"></canvas>
+      </div>
+      <div class="chart-legend" id="legend-elections"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Top Organizations by Participation</h3>
+        <span class="meta">Ballots Cast</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-participation" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Organizations Table -->
+  <div style="margin-top:36px">
+    <div class="page-head" style="margin-bottom:14px">
+      <h2>Organizations</h2>
+      <div class="filter-toolbar" style="margin-bottom:0">
+        <div class="filter-search">
+          <svg class="filter-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="org-search" placeholder="Search by name, slug, or admin…">
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar" id="org-tabs">
+      <button type="button" class="tab-btn active" data-org-filter="all">All Organizations <span class="count-pill" id="pill-org-all">0</span></button>
+      <button type="button" class="tab-btn" data-org-filter="pending">Pending Approval <span class="count-pill" id="pill-org-pending">0</span></button>
+      <button type="button" class="tab-btn" data-org-filter="active">Active <span class="count-pill" id="pill-org-active">0</span></button>
+      <button type="button" class="tab-btn" data-org-filter="suspended">Suspended <span class="count-pill" id="pill-org-suspended">0</span></button>
+    </div>
+
+    <div class="table-wrap panel-plain">
+      <table>
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th>Status</th>
+            <th>Primary Admin</th>
+            <th>Members</th>
+            <th>Elections</th>
+            <th>Created</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="orgs-body">
+          <tr><td colspan="7" class="empty-state">Loading organizations…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Audit Log Section -->
+  <div style="margin-top:48px">
+    <div class="page-head" style="margin-bottom:14px">
+      <div>
+        <h2>Security Audit Stream</h2>
+        <p class="meta">Immutable ledger of administrative actions, status transitions, and election approvals.</p>
+      </div>
+      <div class="filter-toolbar" style="margin-bottom:0">
+        <div class="filter-search">
+          <svg class="filter-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="audit-search" placeholder="Search actor, org, action…">
+        </div>
+        <select id="audit-action-filter" style="width:auto;min-width:180px">
+          <option value="all">All Action Types</option>
+          <option value="organization.status_changed">Organization Status Changes</option>
+          <option value="organization.created_by_superadmin">Superadmin Creations</option>
+          <option value="election.created">Election Creations</option>
+          <option value="election.status_changed">Election Status Changes</option>
+          <option value="election.results_published">Results Published</option>
+          <option value="candidate.application_reviewed">Candidate Reviews</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap panel-plain">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Actor</th>
+            <th>Organization</th>
+            <th>Action</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="audit-body">
+          <tr><td colspan="5" class="empty-state">Loading audit stream…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Platform Diagnostics & Production Readiness -->
+  <div style="margin-top:48px">
+    <h2>Platform Health & Diagnostics</h2>
+    <div class="panel-plain" id="system-info-panel" style="margin-top:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:20px">
+        <div>
+          <small class="meta">DATABASE CONNECTIVITY</small>
+          <div style="font-weight:700;font-size:1.05rem;color:var(--success);margin-top:2px" id="diag-db">Checking…</div>
+        </div>
+        <div>
+          <small class="meta">DB CONNECTION POOL</small>
+          <div style="font-weight:700;font-size:1.05rem;margin-top:2px" id="diag-pool">—</div>
+        </div>
+        <div>
+          <small class="meta">PROCESS UPTIME</small>
+          <div style="font-weight:700;font-size:1.05rem;margin-top:2px" id="diag-uptime">—</div>
+        </div>
+        <div>
+          <small class="meta">MEMORY (RSS / HEAP)</small>
+          <div style="font-weight:700;font-size:1.05rem;margin-top:2px" id="diag-memory">—</div>
+        </div>
+        <div>
+          <small class="meta">NODE ENVIRONMENT</small>
+          <div style="font-weight:700;font-size:1.05rem;margin-top:2px" id="diag-env">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+const user = requireSession(["super_admin"]);
+renderTopbar("/superadmin/dashboard.html");
+
+let rawOrgs = [];
+let rawAudit = [];
+let rawAnalytics = null;
+let currentOrgFilter = "all";
+
+// Clock ticker
+function updateTime() {
+  const el = document.getElementById("live-time");
+  if (el) el.textContent = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+async function loadData() {
+  const refreshBtn = document.getElementById("refresh-btn");
+  setButtonBusy(refreshBtn, true, "Loading…");
+
+  try {
+    const [overview, orgs, analytics, audit, system] = await Promise.all([
+      api("GET", "/superadmin/overview"),
+      api("GET", "/superadmin/organizations"),
+      api("GET", "/superadmin/analytics"),
+      api("GET", "/superadmin/audit-log?limit=80"),
+      api("GET", "/superadmin/system-info"),
+    ]);
+
+    rawOrgs = orgs;
+    rawAudit = audit;
+    rawAnalytics = analytics;
+
+    // Render KPIs
+    const countBy = (arr, key) => Object.fromEntries(arr.map(r => [r[key], r.count]));
+    const orgCounts = countBy(overview.organizations, "status");
+    const elCounts = countBy(overview.elections, "status");
+    const userCounts = countBy(overview.users, "role");
+
+    const totalUsers = Object.values(userCounts).reduce((a, b) => a + b, 0);
+
+    animateNumber(document.getElementById("stat-orgs"), 0, orgs.length);
+    document.getElementById("stat-orgs-sub").textContent = `${orgCounts.active || 0} active · ${orgCounts.pending || 0} pending`;
+
+    animateNumber(document.getElementById("stat-pending"), 0, orgCounts.pending || 0);
+    animateNumber(document.getElementById("stat-voting"), 0, elCounts.voting_open || 0);
+    document.getElementById("stat-elections-sub").textContent = `${overview.elections.reduce((a,b)=>a+b.count, 0)} total created`;
+
+    animateNumber(document.getElementById("stat-ballots"), 0, overview.total_votes_cast || 0);
+    animateNumber(document.getElementById("stat-users"), 0, totalUsers);
+    document.getElementById("stat-users-sub").textContent = `${userCounts.member || 0} voters · ${userCounts.candidate || 0} candidates`;
+
+    // Render Charts
+    renderCharts(analytics);
+
+    // Update filter tab counts
+    document.getElementById("pill-org-all").textContent = orgs.length;
+    document.getElementById("pill-org-pending").textContent = orgCounts.pending || 0;
+    document.getElementById("pill-org-active").textContent = orgCounts.active || 0;
+    document.getElementById("pill-org-suspended").textContent = orgCounts.suspended || 0;
+
+    renderOrgsTable();
+    renderAuditTable();
+    renderDiagnostics(system);
+
+  } catch (err) {
+    showToast(err.message || "Failed to load dashboard data", "error");
+  } finally {
+    setButtonBusy(refreshBtn, false);
+  }
+}
+
+function renderCharts(analytics) {
+  // 1. Orgs chart
+  const orgMap = { active: 0, pending: 0, suspended: 0 };
+  analytics.orgsByStatus.forEach(r => { orgMap[r.status] = r.count; });
+  renderDonutChart("chart-orgs", {
+    labels: ["Active", "Pending", "Suspended"],
+    data: [orgMap.active, orgMap.pending, orgMap.suspended],
+    colors: ["#34D399", "#F59E0B", "#F87171"],
+    centerText: String(rawOrgs.length),
+    centerSubtext: "Organizations",
+  });
+  document.getElementById("legend-orgs").innerHTML = `
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#34D399"></span> Active (${orgMap.active})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#F59E0B"></span> Pending (${orgMap.pending})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#F87171"></span> Suspended (${orgMap.suspended})</span>
+  `;
+
+  // 2. Elections chart
+  const elMap = { draft: 0, accepting_applications: 0, voting_open: 0, closed: 0 };
+  analytics.electionsByStatus.forEach(r => { elMap[r.status] = r.count; });
+  const totalElections = Object.values(elMap).reduce((a, b) => a + b, 0);
+  renderDonutChart("chart-elections", {
+    labels: ["Live Voting", "Applications Open", "Draft", "Closed"],
+    data: [elMap.voting_open, elMap.accepting_applications, elMap.draft, elMap.closed],
+    colors: ["#34D399", "#A855F7", "#64748B", "#38BDF8"],
+    centerText: String(totalElections),
+    centerSubtext: "Elections",
+  });
+  document.getElementById("legend-elections").innerHTML = `
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#34D399"></span> Live (${elMap.voting_open})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#A855F7"></span> Applications (${elMap.accepting_applications})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#64748B"></span> Draft (${elMap.draft})</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:#38BDF8"></span> Closed (${elMap.closed})</span>
+  `;
+
+  // 3. Top Orgs Participation Bar Chart
+  const topOrgs = analytics.topOrgsByVotes || [];
+  if (topOrgs.length) {
+    renderBarChart("chart-participation", {
+      labels: topOrgs.map(o => o.name),
+      data: topOrgs.map(o => o.ballots_cast),
+      colors: ["#A855F7", "#8B5CF6", "#6366F1", "#38BDF8", "#34D399", "#F59E0B"],
+    });
+  } else {
+    const canvas = document.getElementById("chart-participation");
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#94A3B8";
+      ctx.font = '500 13px "Public Sans", sans-serif';
+      ctx.textAlign = "center";
+      ctx.fillText("No voting activity recorded yet", canvas.width / 2, canvas.height / 2);
+    }
+  }
+}
+
+function renderOrgsTable() {
+  const search = (document.getElementById("org-search").value || "").toLowerCase().trim();
+  const filtered = rawOrgs.filter(o => {
+    if (currentOrgFilter !== "all" && o.status !== currentOrgFilter) return false;
+    if (search) {
+      const matchName = (o.name || "").toLowerCase().includes(search);
+      const matchSlug = (o.slug || "").toLowerCase().includes(search);
+      const matchAdmin = (o.admin_email || "").toLowerCase().includes(search);
+      if (!matchName && !matchSlug && !matchAdmin) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById("orgs-body");
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No organizations match the selected criteria.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(o => `
+    <tr>
+      <td>
+        <strong style="color:var(--forest-950);font-size:0.96rem">${escapeHtml(o.name)}</strong>
+        <br><code class="meta" style="font-size:0.8rem">/${escapeHtml(o.slug)}</code>
+      </td>
+      <td>
+        <span class="badge badge-${badgeClass(o.status)}">
+          <span class="badge-dot"></span> ${o.status}
+        </span>
+      </td>
+      <td>
+        <span class="meta">${escapeHtml(o.admin_email || "Pending verification")}</span>
+      </td>
+      <td><strong>${Number(o.member_count).toLocaleString()}</strong></td>
+      <td>${Number(o.election_count).toLocaleString()}</td>
+      <td>
+        <span title="${escapeHtml(fmtDate(o.created_at))}">${fmtTimeAgo(o.created_at)}</span>
+      </td>
+      <td style="text-align:right">
+        <div style="display:inline-flex;gap:6px;justify-content:flex-end">
+          <button class="btn btn-sm btn-ghost" data-view-org="${o.id}">Details</button>
+          ${actionBtnFor(o)}
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  // Attach status change events
+  tbody.querySelectorAll("[data-set-status]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const orgId = btn.dataset.id;
+      const targetStatus = btn.dataset.setStatus;
+      const orgName = btn.dataset.name;
+
+      const titles = {
+        active: "Approve Organization",
+        suspended: "Suspend Organization",
+      };
+      const messages = {
+        active: `Are you sure you want to approve <strong>${escapeHtml(orgName)}</strong>? This will activate their elections and allow them to open voting.`,
+        suspended: `Are you sure you want to suspend <strong>${escapeHtml(orgName)}</strong>? Elections will be temporarily paused until reinstated.`,
+      };
+
+      showModal({
+        title: titles[targetStatus] || "Update Organization Status",
+        bodyHtml: `<p>${messages[targetStatus] || "Proceed with status update?"}</p>`,
+        confirmText: targetStatus === "suspended" ? "Suspend Organization" : "Approve Organization",
+        isDanger: targetStatus === "suspended",
+        onConfirm: async () => {
+          await api("PATCH", `/superadmin/organizations/${orgId}/status`, { status: targetStatus });
+          showToast(`Organization status updated to ${targetStatus}`, "success");
+          if (targetStatus === "active") fireConfetti();
+          await loadData();
+        }
+      });
+    });
+  });
+
+  // Attach view details events
+  tbody.querySelectorAll("[data-view-org]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const org = rawOrgs.find(x => x.id === btn.dataset.viewOrg);
+      if (!org) return;
+      showModal({
+        title: org.name,
+        bodyHtml: `
+          <div style="display:grid;gap:12px;font-size:0.92rem">
+            <div><small class="meta">ORGANIZATION ID</small><br><code>${org.id}</code></div>
+            <div><small class="meta">SLUG</small><br><code>/${escapeHtml(org.slug)}</code></div>
+            <div><small class="meta">CURRENT STATUS</small><br><span class="badge badge-${badgeClass(org.status)}">${org.status}</span></div>
+            <div><small class="meta">PRIMARY ADMIN EMAIL</small><br><strong>${escapeHtml(org.admin_email || "None")}</strong></div>
+            <div><small class="meta">TOTAL MEMBERS</small><br><strong>${org.member_count}</strong></div>
+            <div><small class="meta">TOTAL ELECTIONS</small><br><strong>${org.election_count}</strong></div>
+            <div><small class="meta">REGISTERED ON</small><br>${fmtDate(org.created_at)} (${fmtTimeAgo(org.created_at)})</div>
+          </div>
+        `,
+        confirmText: "Close",
+        cancelText: "",
+      });
+    });
+  });
+}
+
+function actionBtnFor(o) {
+  if (o.status === "pending") {
+    return `<button class="btn btn-sm btn-primary" data-set-status="active" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Approve</button>`;
+  }
+  if (o.status === "active") {
+    return `<button class="btn btn-sm btn-danger" data-set-status="suspended" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Suspend</button>`;
+  }
+  return `<button class="btn btn-sm btn-ghost" data-set-status="active" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Reinstate</button>`;
+}
+
+function badgeClass(status) {
+  if (status === "active") return "active";
+  if (status === "pending") return "pending";
+  return "suspended";
+}
+
+function renderAuditTable() {
+  const search = (document.getElementById("audit-search").value || "").toLowerCase().trim();
+  const actionFilter = document.getElementById("audit-action-filter").value;
+
+  const filtered = rawAudit.filter(a => {
+    if (actionFilter !== "all" && a.action !== actionFilter) return false;
+    if (search) {
+      const matchActor = (a.actor_name || "").toLowerCase().includes(search);
+      const matchOrg = (a.organization_name || "").toLowerCase().includes(search);
+      const matchAction = (a.action || "").toLowerCase().includes(search);
+      if (!matchActor && !matchOrg && !matchAction) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById("audit-body");
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No audit events match the filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(a => `
+    <tr>
+      <td class="meta" title="${escapeHtml(fmtDate(a.created_at))}">${fmtTimeAgo(a.created_at)}</td>
+      <td><strong>${escapeHtml(a.actor_name || "System")}</strong></td>
+      <td>${escapeHtml(a.organization_name || "—")}</td>
+      <td><span class="badge ${badgeForAction(a.action)}">${escapeHtml(a.action)}</span></td>
+      <td>
+        <button class="btn btn-sm btn-ghost" style="padding:3px 8px;font-size:0.75rem" data-view-audit="${a.id}">Inspect Payload</button>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.querySelectorAll("[data-view-audit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const auditItem = rawAudit.find(x => x.id === btn.dataset.viewAudit);
+      if (!auditItem) return;
+      showModal({
+        title: `Audit Event: ${auditItem.action}`,
+        bodyHtml: `
+          <div style="font-size:0.9rem">
+            <p><strong>Actor:</strong> ${escapeHtml(auditItem.actor_name || "System")}<br>
+            <strong>Organization:</strong> ${escapeHtml(auditItem.organization_name || "—")}<br>
+            <strong>Timestamp:</strong> ${fmtDate(auditItem.created_at)}</p>
+            <small class="meta">PAYLOAD DATA (JSON):</small>
+            <pre style="background:var(--ivory-200);padding:14px;border-radius:var(--radius);overflow-x:auto;font-size:0.82rem;margin-top:6px">${escapeHtml(JSON.stringify(auditItem.details, null, 2))}</pre>
+          </div>
+        `,
+        confirmText: "Close",
+        cancelText: "",
+      });
+    });
+  });
+}
+
+function badgeForAction(action) {
+  if (action.includes("created")) return "badge-open";
+  if (action.includes("status_changed")) return "badge-pending";
+  if (action.includes("reviewed")) return "badge-approved";
+  if (action.includes("published")) return "badge-active";
+  return "badge-draft";
+}
+
+function renderDiagnostics(sys) {
+  document.getElementById("diag-db").textContent = sys.database.status === "connected" ? `Online (${sys.database.latencyMs}ms)` : sys.database.status;
+  document.getElementById("diag-db").style.color = sys.database.status === "connected" ? "var(--success)" : "var(--danger)";
+  document.getElementById("diag-pool").textContent = `${sys.database.totalCount} active / ${sys.database.idleCount} idle`;
+  const upMin = Math.floor(sys.uptime / 60);
+  const upHrs = Math.floor(upMin / 60);
+  document.getElementById("diag-uptime").textContent = upHrs > 0 ? `${upHrs}h ${upMin % 60}m` : `${upMin}m`;
+  document.getElementById("diag-memory").textContent = `${sys.memory.rssMb} MB / ${sys.memory.heapUsedMb} MB`;
+  document.getElementById("diag-env").textContent = `${sys.environment.toUpperCase()} (Node ${sys.nodeVersion})`;
+}
+
+// ---------------- Event Listeners
+document.getElementById("refresh-btn").addEventListener("click", loadData);
+
+// Org search & tabs
+document.getElementById("org-search").addEventListener("input", renderOrgsTable);
+document.querySelectorAll("[data-org-filter]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-org-filter]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentOrgFilter = btn.dataset.orgFilter;
+    renderOrgsTable();
+  });
+});
+
+// Audit search & filter
+document.getElementById("audit-search").addEventListener("input", renderAuditTable);
+document.getElementById("audit-action-filter").addEventListener("change", renderAuditTable);
+
+// CSV Export Buttons
+document.getElementById("export-orgs-btn").addEventListener("click", async () => {
+  try {
+    showToast("Preparing organizations CSV report…", "info");
+    await downloadAuthFile("/superadmin/export/organizations", "organizations.csv");
+    showToast("Organizations report downloaded!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+document.getElementById("export-audit-btn").addEventListener("click", async () => {
+  try {
+    showToast("Preparing audit log CSV report…", "info");
+    await downloadAuthFile("/superadmin/export/audit-log", "audit-log.csv");
+    showToast("Audit log report downloaded!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// Provision Organization Modal
+document.getElementById("new-org-btn").addEventListener("click", () => {
+  showModal({
+    title: "Provision New Organization",
+    bodyHtml: `
+      <div class="field">
+        <label for="new-org-name">Organization Name *</label>
+        <input type="text" id="new-org-name" placeholder="e.g. Makerere Students Guild">
+      </div>
+      <div class="field">
+        <label for="new-org-slug">Slug Identifier (optional)</label>
+        <input type="text" id="new-org-slug" placeholder="e.g. mru-guild">
+        <div class="hint">Will be auto-generated from name if left blank.</div>
+      </div>
+      <hr class="divider" style="margin:16px 0">
+      <div class="field">
+        <label for="new-admin-name">Initial Administrator Full Name *</label>
+        <input type="text" id="new-admin-name" placeholder="e.g. Alice Nakamya">
+      </div>
+      <div class="field">
+        <label for="new-admin-email">Administrator Email *</label>
+        <input type="email" id="new-admin-email" placeholder="admin@organization.edu">
+      </div>
+      <div class="field">
+        <label for="new-admin-password">Initial Password * (min 8 chars)</label>
+        <input type="password" id="new-admin-password" placeholder="••••••••">
+      </div>
+    `,
+    confirmText: "Create Organization",
+    onConfirm: async () => {
+      const name = document.getElementById("new-org-name").value.trim();
+      const slug = document.getElementById("new-org-slug").value.trim();
+      const admin_name = document.getElementById("new-admin-name").value.trim();
+      const admin_email = document.getElementById("new-admin-email").value.trim();
+      const admin_password = document.getElementById("new-admin-password").value;
+
+      if (!name || !admin_name || !admin_email || !admin_password) {
+        throw new Error("All fields except slug are required.");
+      }
+      if (admin_password.length < 8) {
+        throw new Error("Password must be at least 8 characters long.");
+      }
+
+      await api("POST", "/superadmin/organizations", {
+        name, slug, admin_name, admin_email, admin_password,
+      });
+
+      showToast(`Organization "${name}" successfully provisioned and activated!`, "success");
+      fireConfetti();
+      await loadData();
+    }
+  });
+});
+
+loadData();
+</script>
+</body>
+</html>

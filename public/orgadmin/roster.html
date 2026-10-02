@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Organization Roster — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .roster-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 800px) {
+    .roster-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell">
+  <div class="page-head">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span class="badge badge-approved"><span class="badge-dot"></span> Members Directory</span>
+        <span class="meta" id="org-name-header"></span>
+      </div>
+      <h1>Organization Roster</h1>
+      <p class="meta">Manage student and member accounts, verify voting standing, and monitor candidacies.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-sm" id="export-roster-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export Roster (CSV)
+      </button>
+    </div>
+  </div>
+
+  <div id="alert-slot"></div>
+
+  <!-- KPI Cards & Chart -->
+  <div class="roster-grid">
+    <div class="stat-grid" style="margin-bottom:0">
+      <div class="stat">
+        <span class="n" id="stat-total">0</span>
+        <span class="label">Total Members</span>
+        <span class="subtext">Registered in organization</span>
+      </div>
+      <div class="stat">
+        <span class="n" id="stat-voters">0</span>
+        <span class="label">Active Voters</span>
+        <span class="subtext">Standard voting members</span>
+      </div>
+      <div class="stat">
+        <span class="n" id="stat-candidates" style="color:var(--forest-700)">0</span>
+        <span class="label">Approved Candidates</span>
+        <span class="subtext">Running in 1+ elections</span>
+      </div>
+      <div class="stat">
+        <span class="n" id="stat-verified">0%</span>
+        <span class="label">Email Verified</span>
+        <span class="subtext" id="stat-verified-sub">0 verified</span>
+      </div>
+    </div>
+
+    <!-- Chart Panel -->
+    <div class="panel-plain text-center" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px">
+      <canvas id="roster-chart" width="140" height="140"></canvas>
+      <div class="meta" style="margin-top:6px;font-weight:600">Roster Composition</div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar -->
+  <div class="page-head" style="margin-bottom:14px;margin-top:10px">
+    <div class="tabs" style="margin-bottom:0;border:none">
+      <button type="button" class="tab active" data-filter="all">All (<span id="count-all">0</span>)</button>
+      <button type="button" class="tab" data-filter="voters">Voters (<span id="count-voters">0</span>)</button>
+      <button type="button" class="tab" data-filter="candidates">Candidates (<span id="count-candidates">0</span>)</button>
+      <button type="button" class="tab" data-filter="unverified">Unverified (<span id="count-unverified">0</span>)</button>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="search" id="roster-search" placeholder="Search by name or email…" style="max-width:280px;padding:8px 14px;font-size:0.9rem">
+    </div>
+  </div>
+
+  <div class="table-wrap panel-plain">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Standing Role</th>
+          <th>Verification</th>
+          <th>Approved Candidacies</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody id="roster-body">
+        <tr><td colspan="6" class="empty-state">Loading members roster…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+const user = requireSession(["org_admin"]);
+renderTopbar("/orgadmin/roster.html");
+
+let roster = [];
+let filter = "all";
+let searchQuery = "";
+
+async function load() {
+  try {
+    roster = await api("GET", "/orgadmin/roster");
+
+    const total = roster.length;
+    const voters = roster.filter(r => r.role === "member").length;
+    const candidates = roster.filter(r => r.role === "candidate").length;
+    const verified = roster.filter(r => r.email_verified).length;
+    const unverified = total - verified;
+
+    animateNumber(document.getElementById("stat-total"), 0, total);
+    animateNumber(document.getElementById("stat-voters"), 0, voters);
+    animateNumber(document.getElementById("stat-candidates"), 0, candidates);
+
+    const verifiedPct = total > 0 ? Math.round((verified / total) * 100) : 0;
+    document.getElementById("stat-verified").textContent = `${verifiedPct}%`;
+    document.getElementById("stat-verified-sub").textContent = `${verified} of ${total} verified`;
+
+    document.getElementById("count-all").textContent = total;
+    document.getElementById("count-voters").textContent = voters;
+    document.getElementById("count-candidates").textContent = candidates;
+    document.getElementById("count-unverified").textContent = unverified;
+
+    // Render donut chart
+    renderDonutChart("roster-chart", {
+      labels: ["Voters", "Candidates", "Unverified"],
+      data: [voters, candidates, unverified],
+      colors: ["#38BDF8", "#A855F7", "#F87171"],
+      centerText: String(total),
+      centerSubtext: "Members",
+    });
+
+    render();
+  } catch (err) {
+    document.getElementById("alert-slot").innerHTML = `
+      <div class="alert alert-error">${escapeHtml(err.message)}</div>
+    `;
+  }
+}
+
+function render() {
+  const q = searchQuery.toLowerCase();
+  const rows = roster.filter(r => {
+    if (filter === "voters" && r.role !== "member") return false;
+    if (filter === "candidates" && r.role !== "candidate") return false;
+    if (filter === "unverified" && r.email_verified) return false;
+
+    if (q) {
+      const name = (r.full_name || "").toLowerCase();
+      const email = (r.email || "").toLowerCase();
+      if (!name.includes(q) && !email.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById("roster-body");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No members matching this search or filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.full_name)}</strong></td>
+      <td><a href="mailto:${escapeHtml(r.email)}" class="meta" style="color:var(--forest-800)">${escapeHtml(r.email)}</a></td>
+      <td>
+        <span class="badge ${r.role === "candidate" ? "badge-approved" : "badge-draft"}">
+          ${r.role === "candidate" ? "★ Candidate" : "Voter"}
+        </span>
+      </td>
+      <td>
+        ${r.email_verified ? `
+          <span class="badge badge-approved" style="font-size:0.75rem">✓ Verified</span>
+        ` : `
+          <span class="badge badge-pending" style="font-size:0.75rem">Unverified</span>
+        `}
+      </td>
+      <td>
+        <strong>${r.approved_candidacies}</strong> election(s)
+      </td>
+      <td class="meta">${fmtDate(r.created_at)}</td>
+    </tr>
+  `).join("");
+}
+
+// Tab filtering
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    filter = tab.dataset.filter;
+    render();
+  });
+});
+
+// Search input
+document.getElementById("roster-search").addEventListener("input", (e) => {
+  searchQuery = e.target.value.trim();
+  render();
+});
+
+// Export CSV Button
+document.getElementById("export-roster-btn").addEventListener("click", async () => {
+  try {
+    showToast("Preparing organization roster CSV…", "info");
+    await downloadAuthFile("/orgadmin/export/roster", "organization-roster.csv");
+    showToast("Roster report downloaded!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+load();
+</script>
+</body>
+</html>

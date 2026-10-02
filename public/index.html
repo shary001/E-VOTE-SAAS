@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Civic Ledger — Secure Multi-Tenant Voting Platform</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .hero {
+    padding: 72px 0 64px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .hero .eyebrow-ballot {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(168, 85, 247, 0.16);
+    color: #C084FC;
+    border: 1px solid rgba(192, 132, 252, 0.35);
+    padding: 5px 16px;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.84rem;
+    margin-bottom: 18px;
+    letter-spacing: 0.04em;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+  }
+  .hero h1 {
+    font-size: 3rem;
+    line-height: 1.15;
+    max-width: 14ch;
+    margin-bottom: 16px;
+    color: #FFFFFF;
+    text-shadow: 0 2px 16px rgba(255, 255, 255, 0.2);
+  }
+  .hero p.lede {
+    font-size: 1.12rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 48ch;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  .interactive-ballot-card {
+    border: 1px solid var(--glass-border-highlight);
+    border-radius: 24px;
+    background: var(--glass-bg-deep);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 26px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    animation: scale-up 450ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .interactive-ballot-card h3 {
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .ballot-demo-row {
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.04);
+    transition: all 160ms ease;
+    color: var(--text-main);
+  }
+  .ballot-demo-row:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+  }
+  .ballot-demo-row.selected {
+    border-color: var(--neon-purple);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.2));
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+  }
+  .ballot-demo-radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ballot-demo-row.selected .ballot-demo-radio {
+    border-color: var(--neon-purple);
+    background: var(--neon-purple);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  }
+  .ballot-demo-row.selected .ballot-demo-radio::after {
+    content: "✓";
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .how-it-works {
+    padding: 64px 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+  }
+  .how-it-works .step h4 {
+    color: var(--text-white);
+    font-size: 1.15rem;
+    margin: 8px 0;
+  }
+  .how-it-works .step .n {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--neon-cyan);
+    display: block;
+    text-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  }
+  .how-it-works .step p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .roles {
+    padding: 20px 0 72px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .role-card {
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 28px;
+    background: var(--glass-bg-card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+    transition: all 180ms ease;
+  }
+  .role-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-hover);
+  }
+  .role-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    color: var(--text-white);
+  }
+  .role-card p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  footer {
+    border-top: 1px solid var(--glass-border);
+    padding: 32px 0;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    text-align: center;
+  }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 36px; }
+    .how-it-works, .roles { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<section class="hero">
+  <div class="shell hero-grid">
+    <div>
+      <div class="eyebrow-ballot">
+        <span class="badge-dot"></span> Multi-Tenant Civic Trust Architecture
+      </div>
+      <h1>Run an election your members actually trust.</h1>
+      <p class="lede">
+        One organization or hundreds — each gets its own independent ballot, eligibility rules, and a secret vote that can never be cast twice or traced back to who cast it.
+      </p>
+      <div class="hero-actions">
+        <a href="/register.html" class="btn btn-primary" style="padding:12px 24px;font-size:1rem">Register Organization &rarr;</a>
+        <a href="/login.html" class="btn btn-ghost" style="padding:12px 22px;font-size:1rem">Access Portal</a>
+      </div>
+    </div>
+
+    <!-- Live Interactive Preview Ballot Card -->
+    <div class="interactive-ballot-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3>Live Sample Ballot</h3>
+        <span class="badge badge-approved" style="font-size:0.75rem">Demo Ballot</span>
+      </div>
+
+      <p class="meta" style="margin-bottom:12px">Student Guild President &middot; Select a candidate below:</p>
+
+      <div class="ballot-demo-row selected" data-cand="Amara Odinga">
+        <div class="ballot-demo-radio"></div>
+        <div style="flex:1">
+          <strong>Amara Odinga</strong>
+          <div class="meta" style="font-size:0.8rem">Computing & IT &middot; 412 votes</div>
+        </div>
+      </div>
+
+      <div class="ballot-demo-row" data-cand="Femi Adeyemi">
+        <div class="ballot-demo-radio"></div>
+        <div style="flex:1">
+          <strong>Femi Adeyemi</strong>
+          <div class="meta" style="font-size:0.8rem">Business Administration &middot; 287 votes</div>
+        </div>
+      </div>
+
+      <div class="ballot-demo-row" data-cand="Grace Nakato">
+        <div class="ballot-demo-radio"></div>
+        <div style="flex:1">
+          <strong>Grace Nakato</strong>
+          <div class="meta" style="font-size:0.8rem">Engineering & Design &middot; 195 votes</div>
+        </div>
+      </div>
+
+      <button class="btn btn-gold btn-block btn-sm" id="cast-demo-btn" style="margin-top:14px">
+        Try Casting Demo Ballot
+      </button>
+
+      <hr class="divider" style="margin:14px 0 10px">
+      <small class="meta" style="display:block;text-align:center">
+        894 of 1,050 eligible members voted &middot; Closes in 2h 14m
+      </small>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works Flow -->
+<section class="shell how-it-works">
+  <div class="step">
+    <span class="n">01</span>
+    <h4>Register Organization</h4>
+    <p>Admin and organization are created together. Platform gatekeepers review each tenant to maintain platform integrity.</p>
+  </div>
+  <div class="step">
+    <span class="n">02</span>
+    <h4>Set Eligibility Rules</h4>
+    <p>Configure candidacy windows, department restrictions, and tenure requirements for every seat.</p>
+  </div>
+  <div class="step">
+    <span class="n">03</span>
+    <h4>Review Candidates</h4>
+    <p>Examine candidate statements, approve valid candidates, and publish official ballots with full audit logging.</p>
+  </div>
+  <div class="step">
+    <span class="n">04</span>
+    <h4>Vote Once, Anonymously</h4>
+    <p>Ballot issuance and vote marks are separate database tables in one transaction — mathematically anti-double-vote.</p>
+  </div>
+</section>
+
+<!-- Roles Overview -->
+<section class="shell roles">
+  <div class="role-card">
+    <span class="badge badge-approved" style="margin-bottom:10px">Voters & Members</span>
+    <h3>Eligible Members</h3>
+    <p>Verify institutional email, browse elections, apply for candidacy, and cast secret cryptographic ballots from mobile or desktop.</p>
+  </div>
+  <div class="role-card">
+    <span class="badge badge-pending" style="margin-bottom:10px">Org Administrators</span>
+    <h3>Election Admins</h3>
+    <p>Deploy draft elections, review candidate applications with rejection reasons, monitor live turnout gauges, and export certified CSV tallies.</p>
+  </div>
+  <div class="role-card">
+    <span class="badge badge-draft" style="margin-bottom:10px">Platform Super Admin</span>
+    <h3>System Oversight</h3>
+    <p>Provision new institutions, approve or suspend organizations, review platform-wide analytics, and audit immutable system logs.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="shell">
+    <strong>Civic Ledger</strong> &mdash; Democratic voting infrastructure engineered with Node.js and PostgreSQL.
+  </div>
+</footer>
+
+<script src="/js/app.js"></script>
+<script src="/js/ui.js"></script>
+<script>
+renderTopbar("/");
+
+// Interactive demo ballot click handlers
+document.querySelectorAll(".ballot-demo-row").forEach(row => {
+  row.addEventListener("click", () => {
+    document.querySelectorAll(".ballot-demo-row").forEach(r => r.classList.remove("selected"));
+    row.classList.add("selected");
+  });
+});
+
+document.getElementById("cast-demo-btn").addEventListener("click", () => {
+  const selected = document.querySelector(".ballot-demo-row.selected");
+  const candName = selected ? selected.dataset.cand : "Candidate";
+  fireConfetti();
+  showToast(`Demo ballot cast for ${candName}! Sign up to host real elections.`, "success");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Register — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+/* ── Ambient scene ── */
+.reg-scene {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+}
+.orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.45; animation: orb-drift 14s ease-in-out infinite alternate;
+}
+.orb-a { width: 420px; height: 420px; background: radial-gradient(circle, #7C3AED 0%, transparent 70%); top: -120px; left: -100px; animation-delay: 0s; }
+.orb-b { width: 340px; height: 340px; background: radial-gradient(circle, #0EA5E9 0%, transparent 70%); bottom: -80px; right: -80px; animation-delay: -5s; animation-duration: 18s; }
+.orb-c { width: 260px; height: 260px; background: radial-gradient(circle, #EC4899 0%, transparent 70%); top: 55%; left: 60%; animation-delay: -9s; animation-duration: 22s; opacity: 0.28; }
+@keyframes orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(30px, -25px) scale(1.08); }
+  100% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+/* ── Card ── */
+.reg-wrap {
+  position: relative; z-index: 1;
+  max-width: 520px; margin: 0 auto; padding: 36px 16px 60px;
+}
+.reg-card {
+  background: rgba(13,17,36,0.72);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 36px 38px 34px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(255,255,255,0.14) inset;
+  position: relative; overflow: hidden;
+  animation: card-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.reg-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 180px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Window chrome ── */
+.win-chrome { display: flex; align-items: center; gap: 8px; margin-bottom: 26px; }
+.win-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.win-dot.red    { background: #FF5F56; }
+.win-dot.yellow { background: #FFBD2E; }
+.win-dot.green  { background: #27C93F; }
+.win-tag {
+  margin-left: 8px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
+  color: var(--neon-cyan); font-family: 'Public Sans', sans-serif;
+}
+.win-badge {
+  margin-left: auto; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--neon-emerald); background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.25); border-radius: 20px; padding: 2px 10px;
+}
+
+/* ── Mode toggle ── */
+.mode-toggle {
+  display: grid; grid-template-columns: 1fr 1fr;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 4px; gap: 4px;
+  margin-bottom: 26px; position: relative;
+}
+.mode-btn {
+  position: relative; z-index: 1;
+  background: none; border: none; cursor: pointer;
+  padding: 9px 12px; border-radius: 9px; font-size: 0.8rem; font-weight: 600;
+  color: var(--text-muted); transition: color 0.25s; text-align: center;
+  font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.3;
+}
+.mode-btn.active { color: var(--text-white); }
+.mode-slider {
+  position: absolute; top: 4px; bottom: 4px; left: 4px;
+  width: calc(50% - 4px);
+  background: linear-gradient(135deg, rgba(168,85,247,0.35) 0%, rgba(56,189,248,0.25) 100%);
+  border: 1px solid rgba(168,85,247,0.4); border-radius: 9px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 18px rgba(168,85,247,0.2);
+}
+.mode-slider.right { transform: translateX(100%); }
+
+/* ── Input wraps ── */
+.input-wrap { position: relative; }
+.input-wrap input,
+.input-wrap select {
+  width: 100%; box-sizing: border-box;
+}
+.input-wrap .eye-btn {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center;
+}
+.input-wrap .eye-btn:hover { color: var(--neon-purple); }
+.input-wrap input[type="password"],
+.input-wrap input.has-eye { padding-right: 42px; }
+
+/* ── Password strength ── */
+.pw-strength { margin-top: 6px; }
+.pw-strength-bar {
+  height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08);
+  overflow: hidden; margin-bottom: 4px;
+}
+.pw-strength-fill {
+  height: 100%; border-radius: 2px; width: 0%;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+.pw-strength-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+
+/* ── Caps Lock warning ── */
+.caps-warn {
+  display: none; align-items: center; gap: 6px;
+  background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 8px; padding: 6px 10px; margin-top: 6px;
+  font-size: 0.75rem; color: #FCD34D; font-weight: 600;
+}
+.caps-warn.show { display: flex; }
+
+/* ── Field stagger ── */
+.field { animation: field-in 0.4s ease both; }
+.field:nth-child(1) { animation-delay: 0.08s; }
+.field:nth-child(2) { animation-delay: 0.14s; }
+.field:nth-child(3) { animation-delay: 0.20s; }
+.field:nth-child(4) { animation-delay: 0.26s; }
+@keyframes field-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Submit glow ── */
+.btn-submit-reg {
+  margin-top: 14px; width: 100%; position: relative; overflow: hidden;
+}
+.btn-submit-reg::after {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit;
+  background: linear-gradient(135deg, #A855F7, #38BDF8);
+  opacity: 0; transition: opacity 0.3s; z-index: -1; filter: blur(12px);
+}
+.btn-submit-reg:hover::after { opacity: 0.6; }
+
+/* ── Shake on error ── */
+@keyframes shake {
+  0%,100%{ transform: translateX(0); }
+  20%    { transform: translateX(-8px); }
+  40%    { transform: translateX(8px); }
+  60%    { transform: translateX(-5px); }
+  80%    { transform: translateX(4px); }
+}
+.shake-card { animation: shake 0.45s ease !important; }
+</style>
+</head>
+<body>
+<div class="reg-scene">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+</div>
+<div id="topbar-root"></div>
+<main class="shell" style="padding-top:0">
+  <div class="reg-wrap">
+    <div class="reg-card" id="reg-card">
+
+      <!-- Window chrome -->
+      <div class="win-chrome">
+        <span class="win-dot red"></span>
+        <span class="win-dot yellow"></span>
+        <span class="win-dot green"></span>
+        <span class="win-tag">NEW ACCOUNT ONBOARDING</span>
+        <span class="win-badge">SECURE</span>
+      </div>
+
+      <h1 style="font-size:1.85rem;margin-bottom:4px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800">Create your account</h1>
+      <p class="meta" style="margin-bottom:22px">Join your organization or launch a new digital voting tenant.</p>
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle" id="mode-toggle">
+        <div class="mode-slider" id="mode-slider"></div>
+        <button class="mode-btn active" id="btn-join" type="button">
+          👥 Join organization
+        </button>
+        <button class="mode-btn" id="btn-create" type="button">
+          🏛️ New organization
+        </button>
+      </div>
+
+      <div id="alert-slot"></div>
+
+      <form id="register-form">
+        <!-- Org picker (join mode) -->
+        <div class="field" id="org-picker-field">
+          <label for="org-picker">Organization</label>
+          <div class="input-wrap">
+            <select id="org-picker"></select>
+          </div>
+          <div class="hint">Don't see your institution? Switch to "New organization" above.</div>
+        </div>
+
+        <!-- Org name (create mode) -->
+        <div class="field" id="org-name-field" style="display:none">
+          <label for="org-name">Organization name</label>
+          <div class="input-wrap">
+            <input type="text" id="org-name" placeholder="e.g. Makerere Students Guild" autocomplete="organization">
+          </div>
+          <div class="hint">A platform admin reviews new orgs before elections go live.</div>
+        </div>
+
+        <div class="field">
+          <label for="full-name">Full name</label>
+          <div class="input-wrap">
+            <input type="text" id="full-name" required autocomplete="name" placeholder="e.g. Maya Lin">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">Institutional email</label>
+          <div class="input-wrap">
+            <input type="email" id="email" required autocomplete="email" placeholder="name@institution.edu">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input type="password" id="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" class="has-eye">
+            <button type="button" class="eye-btn" id="pw-toggle" tabindex="-1" aria-label="Toggle password visibility">
+              <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <div class="pw-strength" id="pw-strength">
+            <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill"></div></div>
+            <span class="pw-strength-label" id="pw-label">Enter a password</span>
+          </div>
+          <div class="caps-warn" id="caps-warn">⇪ Caps Lock is on</div>
+        </div>
+
+        <button class="btn btn-primary btn-submit-reg" type="submit" id="submit-btn">Create account →</button>
+      </form>
+
+      <p class="meta" style="margin-top:22px;padding-top:18px;border-top:1px solid var(--glass-border);text-align:center">
+        Already registered? <a href="/login.html" style="color:var(--neon-cyan);font-weight:600">Log in →</a>
+      </p>
+    </div>
+  </div>
+</main>
+
+<script src="/js/app.js"></script>
+<script>
+renderTopbar();
+
+/* ── Mode toggle ── */
+const modeSlider  = document.getElementById('mode-slider');
+const btnJoin     = document.getElementById('btn-join');
+const btnCreate   = document.getElementById('btn-create');
+const orgPickerField = document.getElementById('org-picker-field');
+const orgNameField   = document.getElementById('org-name-field');
+let currentMode = 'join_org';
+
+function setMode(mode) {
+  currentMode = mode;
+  if (mode === 'join_org') {
+    modeSlider.classList.remove('right');
+    btnJoin.classList.add('active');
+    btnCreate.classList.remove('active');
+    orgPickerField.style.display = 'block';
+    orgNameField.style.display = 'none';
+  } else {
+    modeSlider.classList.add('right');
+    btnCreate.classList.add('active');
+    btnJoin.classList.remove('active');
+    orgPickerField.style.display = 'none';
+    orgNameField.style.display = 'block';
+  }
+}
+
+btnJoin.addEventListener('click',   () => setMode('join_org'));
+btnCreate.addEventListener('click', () => setMode('create_org'));
+
+/* ── Load orgs ── */
+const orgPicker = document.getElementById('org-picker');
+api('GET', '/auth/organizations').then(orgs => {
+  if (!orgs.length) {
+    orgPicker.innerHTML = `<option value="">No organizations yet — be the first!</option>`;
+  } else {
+    orgPicker.innerHTML = orgs.map(o => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join('');
+  }
+}).catch(() => { orgPicker.innerHTML = `<option value="">Couldn't load organizations</option>`; });
+
+/* ── Password visibility toggle ── */
+const pwInput  = document.getElementById('password');
+const pwToggle = document.getElementById('pw-toggle');
+const eyeIcon  = document.getElementById('eye-icon');
+const EYE_OPEN = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+const EYE_SHUT = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+pwToggle.addEventListener('click', () => {
+  const showing = pwInput.type === 'text';
+  pwInput.type = showing ? 'password' : 'text';
+  eyeIcon.innerHTML = showing ? EYE_OPEN : EYE_SHUT;
+});
+
+/* ── Password strength ── */
+const pwFill  = document.getElementById('pw-fill');
+const pwLabel = document.getElementById('pw-label');
+function checkStrength(val) {
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { pct: '0%',   color: '#374151', text: 'Enter a password' },
+    { pct: '20%',  color: '#EF4444', text: 'Very weak' },
+    { pct: '40%',  color: '#F97316', text: 'Weak' },
+    { pct: '60%',  color: '#EAB308', text: 'Fair' },
+    { pct: '80%',  color: '#22C55E', text: 'Strong' },
+    { pct: '100%', color: '#34D399', text: '🔒 Excellent' },
+  ];
+  const level = val.length === 0 ? levels[0] : levels[Math.min(score, 5)];
+  pwFill.style.width = level.pct;
+  pwFill.style.background = level.color;
+  pwLabel.textContent = level.text;
+  pwLabel.style.color = level.color;
+}
+pwInput.addEventListener('input', () => checkStrength(pwInput.value));
+
+/* ── Caps Lock detection ── */
+const capsWarn = document.getElementById('caps-warn');
+pwInput.addEventListener('keyup', e => {
+  capsWarn.classList.toggle('show', e.getModifierState && e.getModifierState('CapsLock'));
+});
+
+/* ── Form submit ── */
+const regCard  = document.getElementById('reg-card');
+const alertSlot = document.getElementById('alert-slot');
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById('submit-btn');
+  alertSlot.innerHTML = '';
+  const payload = {
+    mode: currentMode,
+    full_name: document.getElementById('full-name').value.trim(),
+    email:     document.getElementById('email').value.trim(),
+    password:  pwInput.value,
+  };
+  if (currentMode === 'create_org') payload.organization_name = document.getElementById('org-name').value.trim();
+  else payload.organization_id = orgPicker.value;
+
+  setButtonBusy(submitBtn, true, 'Creating account');
+  try {
+    const result = await api('POST', '/auth/register', payload);
+    alertSlot.innerHTML = `<div class="alert alert-success">${escapeHtml(result.message)}</div>`;
+    document.getElementById('register-form').reset();
+    checkStrength('');
+  } catch (err) {
+    alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    regCard.classList.add('shake-card');
+    regCard.addEventListener('animationend', () => regCard.classList.remove('shake-card'), { once: true });
+  } finally {
+    setButtonBusy(submitBtn, false);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Election Results — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .winner-banner {
+    background: linear-gradient(135deg, rgba(197, 155, 39, 0.12), rgba(27, 67, 50, 0.08));
+    border: 1px solid var(--gold-400);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-gold);
+    animation: scale-up 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .winner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gold-500);
+    color: var(--forest-950);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .winner-name {
+    font-family: var(--serif);
+    font-size: 2rem;
+    color: var(--forest-900);
+    margin: 0 0 6px;
+    line-height: 1.1;
+  }
+  .winner-tally {
+    font-family: var(--serif);
+    font-size: 2.4rem;
+    color: var(--forest-800);
+    font-weight: 700;
+    text-align: right;
+  }
+  .results-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 768px) {
+    .results-charts-grid { grid-template-columns: 1fr; }
+    .winner-tally { text-align: left; }
+  }
+  .candidate-row-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-soft);
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+  .candidate-row-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .candidate-row-card.is-winner {
+    border-color: var(--gold-500);
+    background: linear-gradient(to right, #fff, var(--gold-100));
+  }
+  .bar-track {
+    height: 12px;
+    background: var(--ivory-200);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--forest-700);
+    border-radius: 6px;
+    transition: width 800ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .candidate-row-card.is-winner .bar-fill {
+    background: var(--gold-500);
+  }
+
+  @media print {
+    .topbar, .page-actions, #toast-container, a.meta { display: none !important; }
+    body { background: #fff !important; }
+    .shell { max-width: 100% !important; padding: 0 !important; }
+    .winner-banner { box-shadow: none !important; border: 1px solid #000 !important; }
+  }
+</style>
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell" style="max-width:760px">
+  <div style="margin-bottom: 12px">
+    <a href="javascript:history.back()" class="meta" style="display:inline-flex;align-items:center;gap:6px">
+      &larr; Back
+    </a>
+  </div>
+
+  <div id="alert-slot"></div>
+  <div id="content"><div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">Loading official certified results…</div></div>
+</main>
+
+<script src="/js/app.js"></script>
+<script src="/js/ui.js"></script>
+<script>
+const user = requireSession(["member", "candidate", "org_admin", "super_admin"]);
+renderTopbar();
+
+const alertSlot = document.getElementById("alert-slot");
+const electionId = new URLSearchParams(window.location.search).get("id");
+
+if (!electionId) {
+  document.getElementById("content").innerHTML = `
+    <div class="alert alert-error">No election ID specified.</div>
+  `;
+} else {
+  loadResults();
+}
+
+async function loadResults() {
+  try {
+    const [election, results] = await Promise.all([
+      api("GET", `/elections/${electionId}`),
+      api("GET", `/elections/${electionId}/results`),
+    ]);
+    render(election, results);
+  } catch (err) {
+    document.getElementById("content").innerHTML = `
+      <div class="alert alert-error">
+        <strong>Cannot display results:</strong> ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+
+function render(election, results) {
+  const candidates = results.candidates || [];
+  const ballotsCast = results.ballots_cast || 0;
+  const maxVotes = Math.max(1, ...candidates.map(c => c.vote_count));
+  const winner = candidates[0];
+  const hasVotes = ballotsCast > 0 && winner && winner.vote_count > 0;
+  const winnerShare = hasVotes ? Math.round((winner.vote_count / ballotsCast) * 100) : 0;
+
+  // Trigger celebratory confetti if election results are in
+  if (hasVotes) {
+    setTimeout(fireConfetti, 400);
+  }
+
+  document.getElementById("content").innerHTML = `
+    <!-- Results Header -->
+    <div class="page-head" style="align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="badge badge-approved">✓ Certified Official Results</span>
+          <span class="meta">${escapeHtml(election.position_name)}</span>
+        </div>
+        <h1 style="margin-bottom:6px">${escapeHtml(election.title)}</h1>
+        <p class="meta">
+          <strong>${ballotsCast}</strong> total ballot(s) cast &middot; Concluded on ${fmtDate(election.voting_close_at)}
+        </p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost btn-sm" id="export-csv-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Winner Banner -->
+    ${hasVotes ? `
+      <div class="winner-banner">
+        <div>
+          <div class="winner-badge">★ Projected Winner</div>
+          <h2 class="winner-name">${escapeHtml(winner.candidate_name)}</h2>
+          <p class="meta" style="margin:0">
+            Received <strong>${winner.vote_count}</strong> votes (${winnerShare}% of total votes)
+          </p>
+          ${winner.statement ? `<p class="meta" style="margin-top:8px;font-style:italic">"${escapeHtml(winner.statement)}"` : ""}
+        </div>
+        <div style="flex-shrink:0">
+          <div class="winner-tally">${winner.vote_count}</div>
+          <span class="meta" style="display:block;text-align:right">Ballots Counted</span>
+        </div>
+      </div>
+    ` : ""}
+
+    <!-- Visual Charts Grid -->
+    ${candidates.length > 1 ? `
+      <div class="results-charts-grid">
+        <div class="panel-plain text-center">
+          <h3 style="margin-bottom:12px;font-size:1rem">Candidate Vote Share</h3>
+          <canvas id="donut-results-chart" width="180" height="180" style="margin:0 auto"></canvas>
+        </div>
+        <div class="panel-plain text-center">
+          <h3 style="margin-bottom:12px;font-size:1rem">Vote Tallies</h3>
+          <canvas id="bar-results-chart" height="180" style="width:100%"></canvas>
+        </div>
+      </div>
+    ` : ""}
+
+    <!-- Candidate Breakdown Cards -->
+    <h2 style="margin-top:32px;margin-bottom:16px">Ballot Standings</h2>
+    <div id="candidates-breakdown">
+      ${candidates.map((c, idx) => {
+        const isWinner = hasVotes && idx === 0;
+        const pct = ballotsCast > 0 ? ((c.vote_count / ballotsCast) * 100).toFixed(1) : "0.0";
+        return `
+          <div class="candidate-row-card ${isWinner ? 'is-winner' : ''}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+              <div>
+                <span class="meta" style="font-weight:700">#${idx + 1}</span>
+                <strong style="font-size:1.15rem;margin-left:6px">${escapeHtml(c.candidate_name)}</strong>
+                ${isWinner ? `<span class="badge badge-approved" style="margin-left:8px">Winner</span>` : ""}
+                ${c.statement ? `<p class="meta" style="margin:6px 0 0">${escapeHtml(c.statement)}</p>` : ""}
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <span style="font-family:var(--serif);font-size:1.5rem;font-weight:700;color:var(--forest-800)">
+                  ${c.vote_count}
+                </span>
+                <span class="meta" style="display:block">${pct}%</span>
+              </div>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${(c.vote_count / maxVotes) * 100}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<div class="empty-state">No candidates participated in this election.</div>`}
+    </div>
+
+    <!-- Security & Anonymity Seal -->
+    <div class="panel-plain" style="margin-top:36px;background:var(--ivory-100);display:flex;align-items:center;gap:14px">
+      <div style="color:var(--forest-800)">${sealSvg()}</div>
+      <div style="font-size:0.86rem;color:var(--ink-600);line-height:1.4">
+        <strong>Civic Ledger Cryptographic Guarantee:</strong> Every ballot was recorded with strict separation between voter identity and candidate selections. No double votes were permitted by the database constraints.
+      </div>
+    </div>
+  `;
+
+  // Draw Charts
+  if (candidates.length > 1) {
+    setTimeout(() => {
+      const colors = ["#A855F7", "#38BDF8", "#34D399", "#F59E0B", "#EC4899", "#6366F1"];
+      renderDonutChart("donut-results-chart", {
+        labels: candidates.map(c => c.candidate_name),
+        data: candidates.map(c => c.vote_count),
+        colors,
+        centerText: String(ballotsCast),
+        centerSubtext: "Ballots",
+      });
+
+      renderBarChart("bar-results-chart", {
+        labels: candidates.map(c => c.candidate_name.split(" ")[0]),
+        data: candidates.map(c => c.vote_count),
+        colors: candidates.map((_, i) => colors[i % colors.length]),
+      });
+    }, 50);
+  }
+
+  // Export CSV Handler
+  const exportBtn = document.getElementById("export-csv-btn");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", async () => {
+      try {
+        showToast("Preparing official results CSV…", "info");
+        await downloadAuthFile(`/elections/${electionId}/export/results`, `results-${electionId}.csv`);
+        showToast("Results CSV downloaded!", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  }
+}
+</script>
+</body>
+</html>

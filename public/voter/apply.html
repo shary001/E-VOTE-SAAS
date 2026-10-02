@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apply as Candidate — Civic Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="topbar-root"></div>
+
+<main class="shell" style="max-width:600px">
+  <div style="margin-bottom: 12px">
+    <a href="/voter/elections.html" class="meta" style="display:inline-flex;align-items:center;gap:6px">
+      &larr; Back to Elections
+    </a>
+  </div>
+
+  <div id="alert-slot"></div>
+  <div id="content">
+    <div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">
+      Loading election guidelines…
+    </div>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+const user = requireSession(["member", "candidate"]);
+renderTopbar("/voter/elections.html");
+
+const alertSlot = document.getElementById("alert-slot");
+const electionId = new URLSearchParams(window.location.search).get("id");
+
+if (!electionId) {
+  window.location.href = "/voter/elections.html";
+}
+
+let currentElection = null;
+
+api("GET", `/elections/${electionId}`).then(election => {
+  currentElection = election;
+  const rules = election.eligibility_rules || {};
+
+  document.getElementById("content").innerHTML = `
+    <div class="page-head" style="margin-bottom:18px">
+      <div>
+        <span class="badge badge-pending" style="margin-bottom:6px"><span class="badge-dot"></span> Candidacy Application</span>
+        <h1 style="margin:4px 0">${escapeHtml(election.title)}</h1>
+        <p class="meta">Office: <strong>${escapeHtml(election.position_name)}</strong></p>
+      </div>
+    </div>
+
+    <!-- Eligibility Criteria Checklist Panel -->
+    <div class="panel-plain" style="margin-bottom:24px">
+      <h3 style="margin-bottom:10px;font-size:1.05rem">Eligibility Criteria</h3>
+      <ul style="margin:0;padding-left:20px;font-size:0.9rem;line-height:1.6;color:var(--text-body)">
+        ${rules.min_account_age_days ? `
+          <li>Must be a member for at least <strong>${rules.min_account_age_days} day(s)</strong></li>
+        ` : `
+          <li>No minimum account membership duration</li>
+        `}
+        ${(rules.allowed_departments || []).length ? `
+          <li>Restricted to departments: <strong>${(rules.allowed_departments).join(", ")}</strong></li>
+        ` : `
+          <li>Open to all academic/organization departments</li>
+        `}
+        ${rules.criteria_text ? `
+          <li><strong>Reviewer guidelines:</strong> ${escapeHtml(rules.criteria_text)}</li>
+        ` : ""}
+      </ul>
+    </div>
+
+    <!-- Application Form -->
+    <form id="apply-form">
+      ${(rules.allowed_departments || []).length ? `
+        <div class="field">
+          <label for="department">Your Department *</label>
+          <input type="text" id="department" required placeholder="Must match one of: ${(rules.allowed_departments).join(", ")}">
+          <div class="hint">Will be checked automatically against allowed departments.</div>
+        </div>
+      ` : ""}
+
+      <div class="field">
+        <label for="statement">Candidate Statement / Manifesto *</label>
+        <textarea id="statement" required rows="5" minlength="20" maxlength="2000" placeholder="Outline your vision, goals, and why fellow members should elect you to this office…"></textarea>
+        <div style="display:flex;justify-content:space-between;margin-top:4px" class="meta">
+          <span>Visible on the official ballot. 20–2000 characters.</span>
+          <span id="char-count" style="font-weight:600">0 / 2000</span>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;display:flex;gap:12px;align-items:center">
+        <button class="btn btn-primary" type="submit" id="submit-btn">Submit Candidacy &rarr;</button>
+        <a class="btn btn-ghost" href="/voter/elections.html">Cancel</a>
+      </div>
+    </form>
+  `;
+
+  // Character counter with colour feedback
+  const textarea = document.getElementById("statement");
+  const charCount = document.getElementById("char-count");
+  if (textarea && charCount) {
+    textarea.addEventListener("input", () => {
+      const len = textarea.value.length;
+      charCount.textContent = `${len} / 2000`;
+      charCount.style.color = len < 20 ? "var(--danger)" : len > 1800 ? "var(--warning)" : "var(--success)";
+    });
+  }
+
+  // Form submit
+  document.getElementById("apply-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById("submit-btn");
+    const deptField = document.getElementById("department");
+    alertSlot.innerHTML = "";
+
+    const statement = document.getElementById("statement").value.trim();
+    const department = deptField ? deptField.value.trim() : undefined;
+
+    setButtonBusy(submitBtn, true, "Submitting Application…");
+    try {
+      await api("POST", `/elections/${electionId}/apply`, { statement, department });
+
+      showToast("Candidacy application submitted!", "success");
+      fireConfetti();
+
+      document.getElementById("content").innerHTML = `
+        <div class="panel-plain text-center" style="padding:36px 20px">
+          <div style="font-size:2.4rem;margin-bottom:8px">📋</div>
+          <h2 style="margin:0 0 8px">Application Received</h2>
+          <p class="meta" style="max-width:440px;margin:0 auto 20px">
+            Your candidate application for <strong>${escapeHtml(election.title)}</strong> has been submitted. The organization administrator will review your submission.
+          </p>
+          <div class="alert alert-success" style="text-align:left;max-width:480px;margin:0 auto 24px">
+            <strong>Next steps:</strong> You'll receive an email update once your application has been approved or reviewed. If approved, you will appear on the final ballot.
+          </div>
+          <a class="btn btn-primary" href="/voter/elections.html">Back to Elections &rarr;</a>
+        </div>
+      `;
+    } catch (err) {
+      alertSlot.innerHTML = `
+        <div class="alert alert-error">
+          <strong>Cannot submit application:</strong> ${escapeHtml(err.message)}
+          ${err.body?.reasons ? "<br>&bull; " + err.body.reasons.map(escapeHtml).join("<br>&bull; ") : ""}
+        </div>
+      `;
+      setButtonBusy(submitBtn, false);
+      showToast(err.message, "error");
+    }
+  });
+}).catch(err => {
+  document.getElementById("content").innerHTML = `
+    <div class="alert alert-error">
+      <strong>Error:</strong> ${escapeHtml(err.message)}
+    </div>
+    <a class="btn btn-ghost" href="/voter/elections.html">&larr; Return to Elections</a>
+  `;
+});
+</script>
+</body>
+</html>
