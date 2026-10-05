@@ -83,11 +83,19 @@ router.post("/register", registerLimiter, async (req, res) => {
     await client.query("COMMIT");
 
     const user = userResult.rows[0];
-    await sendVerificationEmail(user.email, user.full_name, token, code);
+    const emailResult = await sendVerificationEmail(user.email, user.full_name, token, code);
     await logAction(user.id, orgId, mode === "create_org" ? "organization.created" : "user.joined_organization");
 
     res.status(201).json({
-      message: "Account created. Check your email to verify your address before logging in.",
+      message: emailResult.sent
+        ? mode === "create_org"
+          ? "Registration successful. Verify your email with the code we sent; your organization also awaits platform admin approval. Approval does not replace email verification."
+          : "Account created. Enter the verification code sent to your email before logging in."
+        : mode === "create_org"
+          ? "Registration successful, but the verification email could not be delivered. Use Resend code; email verification is still required, and your organization awaits platform admin approval."
+          : "Account created, but the verification email could not be delivered. Use Resend code on the verification page before logging in.",
+      verification_email_sent: emailResult.sent,
+      email: user.email,
       organization_pending: mode === "create_org",
     });
   } catch (err) {

@@ -263,6 +263,7 @@ const cdInterval = setInterval(() => {
   }
 }, 1000);
 
+
 /* ── Success state ── */
 function showVerified() {
   content.style.opacity = '0';
@@ -298,7 +299,41 @@ document.getElementById('verify-form').addEventListener('submit', async (event) 
   } catch (err) {
     alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
     shakeBoxes();
+  } finally {
     setButtonBusy(btn, false);
+  }
+});
+
+resendBtn.addEventListener('click', async () => {
+  const email = emailField.value.trim();
+  if (!email) {
+    alertSlot.innerHTML = `<div class="alert alert-error">Enter your email address before requesting another code.</div>`;
+    emailField.focus();
+    return;
+  }
+
+  resendBtn.disabled = true;
+  resendBtn.textContent = 'Sending code…';
+  alertSlot.innerHTML = '';
+  try {
+    await api('POST', '/auth/resend-verification', { email });
+    alertSlot.innerHTML = `<div class="alert alert-success">If this account is registered and unverified, a new code has been sent. Check your inbox and spam folder.</div>`;
+  } catch (err) {
+    alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    cdSecs = 30;
+    cdSpan.textContent = cdSecs;
+    resendBtn.textContent = `Resend code in ${cdSecs}s`;
+    const countdown = setInterval(() => {
+      cdSecs--;
+      if (cdSecs <= 0) {
+        clearInterval(countdown);
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend code';
+      } else {
+        cdSpan.textContent = cdSecs;
+      }
+    }, 1000);
   }
 });
 

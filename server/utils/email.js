@@ -12,6 +12,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
@@ -59,15 +62,16 @@ async function sendMail(to, subject, html) {
     // No SMTP configured yet (e.g. first local run) — log instead of throwing,
     // so the rest of the flow (esp. during development) isn't blocked.
     console.log(`[email:skip - no SMTP_HOST set] to=${to} subject="${subject}"`);
-    return { skipped: true };
+    return { sent: false, reason: "not_configured" };
   }
   try {
-    return await transporter.sendMail({ from: FROM, to, subject, html });
+    await transporter.sendMail({ from: FROM, to, subject, html });
+    return { sent: true };
   } catch (err) {
     // Email is a notification side effect; an SMTP outage must not undo a
     // committed account, application decision, or password-reset request.
     console.error(`[email:error] ${err.message}`);
-    return { failed: true };
+    return { sent: false, reason: "delivery_failed" };
   }
 }
 
