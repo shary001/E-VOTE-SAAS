@@ -103,4 +103,125 @@ router.get("/export/roster", async (req, res) => {
   res.send(csv);
 });
 
+const { hashPassword } = require("../utils/password");
+const { logAction } = require("../utils/audit");
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Create a new member / voter / admin in this organization
+router.post("/members", async (req, res) => {
+  const { full_name, email, password, role } = req.body || {};
+  if (!full_name || !full_name.trim()) return res.status(400).json({ error: "Full name is required." });
+  if (!email || !email.trim()) return res.status(400).json({ error: "Email is required." });
+  if (!password || password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long." });
+
+  const validRoles = ["member", "candidate", "org_admin"];
+  const memberRole = role && validRoles.includes(role) ? role : "member";
+
+  const existing = await pool.query("select id from users where email = $1", [email.toLowerCase().trim()]);
+  if (existing.rows.length) return res.status(409).json({ error: "Email is already registered." });
+
+  const passwordHash = await hashPassword(password);
+
+  const { rows } = await pool.query(
+    `insert into users (organization_id, full_name, email, password_hash, role, email_verified)
+     values ($1, $2, $3, $4, $5, true)
+     returning id, organization_id, full_name, email, role, email_verified, created_at`,
+    [req.user.organization_id, full_name.trim(), email.toLowerCase().trim(), passwordHash, memberRole]
+  );
+
+  await logAction(req.user.id, req.user.organization_id, "member.created_by_orgadmin", {
+    member_id: rows[0].id,
+    email: rows[0].email,
+    role: rows[0].role,
+  });
+
+  res.status(201).json(rows[0]);
+});
+
+// Update an existing member in this organization
+router.patch("/members/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Member not found." });
+  const { full_name, email, role, password } = req.body || {};
+
+  const userRes = await pool.query(
+    "select * from users where id = $1 and organization_id = $2",
+    [req.params.id, req.user.organization_id]
+  );
+  if (!userRes.rows.length) return res.status(404).json({ error: "Member not found in your organization." });
+  const targetUser = userRes.rows[0];
+
+  const updates = [];
+  const values = [];
+
+  if (full_name && full_name.trim()) {
+    values.push(full_name.trim());
+    updates.push(`full_name = $${values.length}`);
+  }
+
+  if (email && email.trim() && email.toLowerCase().trim() !== targetUser.email) {
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await pool.query("select id from users where email = $1 and id != $2", [cleanEmail, req.params.id]);
+    if (existing.rows.length) return res.status(409).json({ error: "Email is already taken by another account." });
+    values.push(cleanEmail);
+    updates.push(`email = $${values.length}`);
+  }
+
+  if (role) {
+    const validRoles = ["member", "candidate", "org_admin"];
+    if (!validRoles.includes(role)) return res.status(400).json({ error: `role must be one of: ${validRoles.join(", ")}` });
+    values.push(role);
+    updates.push(`role = $${values.length}`);
+  }
+
+  if (password && password.trim()) {
+    if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long." });
+    const passwordHash = await hashPassword(password);
+    values.push(passwordHash);
+    updates.push(`password_hash = $${values.length}`);
+  }
+
+  if (!updates.length) return res.status(400).json({ error: "No fields provided to update." });
+
+  values.push(req.params.id);
+  values.push(req.user.organization_id);
+  const { rows } = await pool.query(
+    `update users set ${updates.join(", ")}
+      where id = $${values.length - 1} and organization_id = $${values.length}
+     returning id, organization_id, full_name, email, role, email_verified, created_at`,
+    values
+  );
+
+  await logAction(req.user.id, req.user.organization_id, "member.updated_by_orgadmin", {
+    member_id: rows[0].id,
+    email: rows[0].email,
+    role: rows[0].role,
+  });
+
+  res.json(rows[0]);
+});
+
+// Remove a member from the organization
+router.delete("/members/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Member not found." });
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: "You cannot delete your own admin account." });
+  }
+
+  const userRes = await pool.query(
+    "select id, full_name, email, role from users where id = $1 and organization_id = $2",
+    [req.params.id, req.user.organization_id]
+  );
+  if (!userRes.rows.length) return res.status(404).json({ error: "Member not found in your organization." });
+  const targetUser = userRes.rows[0];
+
+  await pool.query("delete from users where id = $1", [req.params.id]);
+  await logAction(req.user.id, req.user.organization_id, "member.deleted_by_orgadmin", {
+    deleted_member_id: targetUser.id,
+    deleted_email: targetUser.email,
+  });
+
+  res.json({ message: `Member "${targetUser.full_name}" (${targetUser.email}) removed successfully.` });
+});
+
 module.exports = router;

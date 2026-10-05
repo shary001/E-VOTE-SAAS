@@ -201,6 +201,9 @@ function render() {
             <button class="btn btn-primary" id="publish-results-btn">Publish Results &rarr;</button>
           `
         ) : ""}
+        ${election.status !== "voting_open" ? `
+          <button class="btn btn-danger btn-sm" id="delete-election-btn">Delete Election</button>
+        ` : ""}
       </div>
     </div>
 
@@ -508,6 +511,32 @@ function bindEvents(nextStage) {
       } catch (err) {
         showToast(err.message, "error");
       }
+    });
+  }
+
+  // Delete Election handler
+  const deleteElecBtn = document.getElementById("delete-election-btn");
+  if (deleteElecBtn) {
+    deleteElecBtn.addEventListener("click", () => {
+      showModal({
+        title: "Delete Election",
+        bodyHtml: `
+          <div class="alert alert-error" style="margin-bottom:14px">
+            <strong>Warning:</strong> You are about to permanently delete <strong>${escapeHtml(currentElection.title)}</strong>.
+          </div>
+          <p class="meta">All candidate applications and associated ballot records will be removed. This cannot be undone.</p>
+        `,
+        confirmText: "Delete Election",
+        onConfirm: async () => {
+          try {
+            await api("DELETE", `/elections/${electionId}`);
+            showToast(`Election "${currentElection.title}" deleted.`, "success");
+            window.location.href = "/orgadmin/dashboard.html";
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        }
+      });
     });
   }
 

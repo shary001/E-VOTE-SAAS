@@ -303,4 +303,20 @@ router.get("/:electionId/export/applications", requireAuth, requireRole("org_adm
   res.send(csv);
 });
 
+// Delete an election (allowed in draft, accepting_applications, or closed status)
+router.delete("/:electionId", requireAuth, requireRole("org_admin", "super_admin"), tenantScopeElection(), async (req, res) => {
+  if (req.election.status === "voting_open") {
+    return res.status(409).json({ error: "Cannot delete an election while voting is actively open. Close the election first." });
+  }
+
+  await pool.query("delete from elections where id = $1", [req.election.id]);
+  await logAction(req.user.id, req.election.organization_id, "election.deleted", {
+    election_id: req.election.id,
+    title: req.election.title,
+    status: req.election.status,
+  });
+
+  res.json({ message: `Election "${req.election.title}" deleted successfully.` });
+});
+
 module.exports = router;

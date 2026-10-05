@@ -12,6 +12,8 @@ function slugify(name) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Platform-wide snapshot for the super admin dashboard.
 router.get("/overview", async (req, res) => {
   const [orgs, elections, users, votes] = await Promise.all([
@@ -153,7 +155,51 @@ router.post("/organizations", async (req, res) => {
   res.status(201).json(result);
 });
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Get single organization
+router.get("/organizations/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Organization not found." });
+  const { rows } = await pool.query(
+    `select o.*,
+            (select count(*) from users u where u.organization_id = o.id) as member_count,
+            (select count(*) from elections e where e.organization_id = o.id) as election_count
+       from organizations o where o.id = $1`,
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: "Organization not found." });
+  res.json(rows[0]);
+});
+
+// Update organization details (name, slug)
+router.patch("/organizations/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Organization not found." });
+  const { name, slug } = req.body || {};
+  if (!name && !slug) return res.status(400).json({ error: "At least one of name or slug is required." });
+
+  const updates = [];
+  const values = [];
+
+  if (name && name.trim()) {
+    values.push(name.trim());
+    updates.push(`name = $${values.length}`);
+  }
+  if (slug && slug.trim()) {
+    const cleanSlug = slugify(slug);
+    const existing = await pool.query("select id from organizations where slug = $1 and id != $2", [cleanSlug, req.params.id]);
+    if (existing.rows.length) return res.status(409).json({ error: "Organization slug is already in use." });
+    values.push(cleanSlug);
+    updates.push(`slug = $${values.length}`);
+  }
+
+  values.push(req.params.id);
+  const { rows } = await pool.query(
+    `update organizations set ${updates.join(", ")} where id = $${values.length} returning *`,
+    values
+  );
+  if (!rows.length) return res.status(404).json({ error: "Organization not found." });
+
+  await logAction(req.user.id, req.params.id, "organization.updated", { name: rows[0].name, slug: rows[0].slug });
+  res.json(rows[0]);
+});
 
 // Update organization status (approve / suspend / reinstate)
 router.patch("/organizations/:id/status", async (req, res) => {
@@ -171,6 +217,194 @@ router.patch("/organizations/:id/status", async (req, res) => {
   if (!rows.length) return res.status(404).json({ error: "Organization not found." });
   await logAction(req.user.id, req.params.id, "organization.status_changed", { status });
   res.json(rows[0]);
+});
+
+// Delete organization and all related data (cascade)
+router.delete("/organizations/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Organization not found." });
+  const orgCheck = await pool.query("select id, name from organizations where id = $1", [req.params.id]);
+  if (!orgCheck.rows.length) return res.status(404).json({ error: "Organization not found." });
+
+  // Detach audit logs so historical activity trail is preserved
+  await pool.query("update audit_log set organization_id = null where organization_id = $1", [req.params.id]);
+
+  await pool.query("delete from organizations where id = $1", [req.params.id]);
+  await logAction(req.user.id, null, "organization.deleted", {
+    organization_id: req.params.id,
+    organization_name: orgCheck.rows[0].name,
+  });
+  res.json({ message: `Organization "${orgCheck.rows[0].name}" deleted successfully.` });
+});
+
+// ============================================================================
+// USERS / ADMINS CRUD
+// ============================================================================
+
+// List all users across the platform with filtering
+router.get("/users", async (req, res) => {
+  const role = req.query.role;
+  const orgId = req.query.organization_id;
+  const search = req.query.search;
+  const limit = Math.min(Number(req.query.limit) || 150, 500);
+
+  let query = `
+    select u.id, u.organization_id, u.full_name, u.email, u.role, u.email_verified, u.created_at,
+           o.name as organization_name
+      from users u
+      left join organizations o on o.id = u.organization_id
+     where 1=1
+  `;
+  const params = [];
+
+  if (role && role !== "all") {
+    params.push(role);
+    query += ` and u.role = $${params.length}`;
+  }
+
+  if (orgId && UUID_REGEX.test(orgId)) {
+    params.push(orgId);
+    query += ` and u.organization_id = $${params.length}`;
+  }
+
+  if (search && search.trim()) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    query += ` and (lower(u.full_name) like $${params.length} or lower(u.email) like $${params.length} or lower(coalesce(o.name, '')) like $${params.length})`;
+  }
+
+  params.push(limit);
+  query += ` order by u.created_at desc limit $${params.length}`;
+
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+// Create a new user (super_admin, org_admin, or member)
+router.post("/users", async (req, res) => {
+  const { full_name, email, password, role, organization_id } = req.body || {};
+  if (!full_name || !full_name.trim()) return res.status(400).json({ error: "Full name is required." });
+  if (!email || !email.trim()) return res.status(400).json({ error: "Email is required." });
+  if (!password || password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long." });
+
+  const validRoles = ["super_admin", "org_admin", "member", "candidate"];
+  const userRole = role && validRoles.includes(role) ? role : "member";
+
+  if (userRole !== "super_admin") {
+    if (!organization_id || !UUID_REGEX.test(organization_id)) {
+      return res.status(400).json({ error: "Non-super admin users must be assigned to an organization." });
+    }
+    const orgCheck = await pool.query("select id from organizations where id = $1", [organization_id]);
+    if (!orgCheck.rows.length) return res.status(404).json({ error: "Assigned organization not found." });
+  }
+
+  const existing = await pool.query("select id from users where email = $1", [email.toLowerCase().trim()]);
+  if (existing.rows.length) return res.status(409).json({ error: "Email is already registered." });
+
+  const passwordHash = await hashPassword(password);
+  const orgVal = userRole === "super_admin" ? null : organization_id;
+
+  const { rows } = await pool.query(
+    `insert into users (organization_id, full_name, email, password_hash, role, email_verified)
+     values ($1, $2, $3, $4, $5, true)
+     returning id, organization_id, full_name, email, role, email_verified, created_at`,
+    [orgVal, full_name.trim(), email.toLowerCase().trim(), passwordHash, userRole]
+  );
+
+  await logAction(req.user.id, orgVal, "user.created_by_superadmin", {
+    created_user_id: rows[0].id,
+    email: rows[0].email,
+    role: rows[0].role,
+  });
+
+  res.status(201).json(rows[0]);
+});
+
+// Update a user (full_name, email, role, organization_id, optional new password)
+router.patch("/users/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "User not found." });
+  const { full_name, email, password, role, organization_id } = req.body || {};
+
+  const userRes = await pool.query("select * from users where id = $1", [req.params.id]);
+  if (!userRes.rows.length) return res.status(404).json({ error: "User not found." });
+  const targetUser = userRes.rows[0];
+
+  const updates = [];
+  const values = [];
+
+  if (full_name && full_name.trim()) {
+    values.push(full_name.trim());
+    updates.push(`full_name = $${values.length}`);
+  }
+
+  if (email && email.trim() && email.toLowerCase().trim() !== targetUser.email) {
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await pool.query("select id from users where email = $1 and id != $2", [cleanEmail, req.params.id]);
+    if (existing.rows.length) return res.status(409).json({ error: "Email is already taken by another account." });
+    values.push(cleanEmail);
+    updates.push(`email = $${values.length}`);
+  }
+
+  if (role) {
+    const validRoles = ["super_admin", "org_admin", "member", "candidate"];
+    if (!validRoles.includes(role)) return res.status(400).json({ error: `role must be one of: ${validRoles.join(", ")}` });
+    values.push(role);
+    updates.push(`role = $${values.length}`);
+  }
+
+  if (organization_id !== undefined) {
+    if (organization_id && UUID_REGEX.test(organization_id)) {
+      const orgCheck = await pool.query("select id from organizations where id = $1", [organization_id]);
+      if (!orgCheck.rows.length) return res.status(404).json({ error: "Assigned organization not found." });
+      values.push(organization_id);
+      updates.push(`organization_id = $${values.length}`);
+    } else if (organization_id === null) {
+      values.push(null);
+      updates.push(`organization_id = $${values.length}`);
+    }
+  }
+
+  if (password && password.trim()) {
+    if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long." });
+    const passwordHash = await hashPassword(password);
+    values.push(passwordHash);
+    updates.push(`password_hash = $${values.length}`);
+  }
+
+  if (!updates.length) return res.status(400).json({ error: "No fields provided to update." });
+
+  values.push(req.params.id);
+  const { rows } = await pool.query(
+    `update users set ${updates.join(", ")} where id = $${values.length}
+     returning id, organization_id, full_name, email, role, email_verified, created_at`,
+    values
+  );
+
+  await logAction(req.user.id, rows[0].organization_id, "user.updated_by_superadmin", {
+    target_user_id: rows[0].id,
+    email: rows[0].email,
+    role: rows[0].role,
+  });
+
+  res.json(rows[0]);
+});
+
+// Delete a user (preventing deleting own account)
+router.delete("/users/:id", async (req, res) => {
+  if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "User not found." });
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: "You cannot delete your own super admin account." });
+  }
+
+  const userRes = await pool.query("select id, full_name, email, organization_id from users where id = $1", [req.params.id]);
+  if (!userRes.rows.length) return res.status(404).json({ error: "User not found." });
+  const user = userRes.rows[0];
+
+  await pool.query("delete from users where id = $1", [req.params.id]);
+  await logAction(req.user.id, user.organization_id, "user.deleted_by_superadmin", {
+    deleted_user_id: user.id,
+    deleted_email: user.email,
+  });
+
+  res.json({ message: `User "${user.full_name}" (${user.email}) deleted successfully.` });
 });
 
 // Export organizations list as CSV
