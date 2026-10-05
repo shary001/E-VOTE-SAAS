@@ -40,7 +40,7 @@
     <div class="stat"><span class="n" id="stat-orgs">—</span><span class="label">Total Organizations</span><span class="subtext" id="stat-orgs-sub">Active vs Pending</span></div>
     <div class="stat"><span class="n" id="stat-pending" style="color:var(--warning)">—</span><span class="label">Awaiting Approval</span><span class="subtext">Requires platform admin action</span></div>
     <div class="stat"><span class="n" id="stat-voting" style="color:var(--success)">—</span><span class="label">Live Voting Now</span><span class="subtext" id="stat-elections-sub">Across all organizations</span></div>
-    <div class="stat"><span class="n" id="stat-ballots" style="color:var(--gold-600)">—</span><span class="label">Ballots Cast</span><span class="subtext">Platform-wide participation</span></div>
+    <div class="stat"><span class="n" id="stat-ballots" style="color:var(--neon-amber)">—</span><span class="label">Ballots Cast</span><span class="subtext">Platform-wide participation</span></div>
     <div class="stat"><span class="n" id="stat-users">—</span><span class="label">Registered Accounts</span><span class="subtext" id="stat-users-sub">Voters & candidates</span></div>
   </div>
 
@@ -343,7 +343,7 @@ function renderOrgsTable() {
   tbody.innerHTML = filtered.map(o => `
     <tr>
       <td>
-        <strong style="color:var(--forest-950);font-size:0.96rem">${escapeHtml(o.name)}</strong>
+        <strong style="color:var(--text-white);font-size:0.96rem">${escapeHtml(o.name)}</strong>
         <br><code class="meta" style="font-size:0.8rem">/${escapeHtml(o.slug)}</code>
       </td>
       <td>

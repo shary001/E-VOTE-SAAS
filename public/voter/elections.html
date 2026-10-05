@@ -66,7 +66,7 @@
   </div>
 
   <div id="election-list">
-    <div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">
+    <div class="panel-plain text-center" style="padding:48px 0;color:var(--text-muted)">
       Loading your elections…
     </div>
   </div>
@@ -150,7 +150,7 @@ function render() {
               <span class="meta">${escapeHtml(e.position_name)}</span>
             </div>
             <h2 style="font-size:1.35rem;margin:0 0 6px">${escapeHtml(e.title)}</h2>
-            ${e.description ? `<p style="margin:0 0 10px;font-size:0.92rem;color:var(--ink-600);max-width:620px">${escapeHtml(e.description)}</p>` : ""}
+            ${e.description ? `<p style="margin:0 0 10px;font-size:0.92rem;color:var(--text-muted);max-width:620px">${escapeHtml(e.description)}</p>` : ""}
           </div>
           <div style="text-align:right;flex-shrink:0">
             ${actionsFor(e)}

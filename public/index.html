@@ -178,9 +178,24 @@
     text-align: center;
   }
   @media (max-width: 860px) {
-    .hero-grid { grid-template-columns: 1fr; gap: 36px; }
-    .how-it-works, .roles { grid-template-columns: 1fr; }
-    .hero h1 { font-size: 2.2rem; }
+    .hero { padding: 48px 0 40px; }
+    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    .interactive-ballot-card { display: none; }
+    .how-it-works { grid-template-columns: repeat(2, 1fr); padding: 40px 0; }
+    .roles { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2.2rem; max-width: none; }
+  }
+  @media (max-width: 480px) {
+    .hero { padding: 36px 0 32px; }
+    .hero h1 { font-size: clamp(1.6rem, 6vw, 2rem); }
+    .hero p.lede { font-size: 1rem; }
+    .hero-actions { flex-direction: column; gap: 10px; }
+    .hero-actions .btn { width: 100%; text-align: center; padding: 14px 20px !important; font-size: 1rem !important; }
+    .how-it-works { grid-template-columns: 1fr; gap: 20px; padding: 32px 0; }
+    .how-it-works .step h4 { font-size: 1.05rem; }
+    .roles { padding-bottom: 48px; }
+    .role-card { padding: 20px; }
+    .role-card h3 { font-size: 1.15rem; }
   }
 </style>
 </head>

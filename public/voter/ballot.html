@@ -97,7 +97,7 @@
 
   <div id="alert-slot"></div>
   <div id="content">
-    <div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">
+    <div class="panel-plain text-center" style="padding:48px 0;color:var(--text-muted)">
       Loading official ballot…
     </div>
   </div>
@@ -167,7 +167,7 @@ function render() {
       </div>
     </div>
 
-    <div class="panel-plain" style="margin-bottom:20px;background:var(--ivory-50);font-size:0.86rem;color:var(--ink-600)">
+    <div class="panel-plain" style="margin-bottom:20px;background:var(--glass-bg-card);font-size:0.86rem;color:var(--text-muted)">
       <strong>Voting instructions:</strong> Select exactly one candidate below and click "Review & Cast Ballot". Your vote will be recorded with total anonymity.
     </div>
 
@@ -179,7 +179,7 @@ function render() {
           <div style="flex:1">
             <h3 style="margin:0 0 4px;font-size:1.1rem">${escapeHtml(c.candidate_name)}</h3>
             ${c.statement ? `
-              <p class="meta" style="margin:0;font-size:0.88rem;color:var(--ink-600);line-height:1.4">
+              <p class="meta" style="margin:0;font-size:0.88rem;color:var(--text-muted);line-height:1.4">
                 "${escapeHtml(c.statement)}"
               </p>
             ` : `<p class="meta" style="margin:0;font-style:italic">No candidate statement provided.</p>`}
@@ -227,11 +227,11 @@ function openConfirmModal() {
     title: "Confirm Your Secret Ballot",
     bodyHtml: `
       <p class="meta" style="margin-bottom:6px">You have selected:</p>
-      <div class="panel-plain" style="text-align:center;padding:20px;border-color:var(--forest-600);background:var(--ivory-50)">
-        <h2 style="margin:0;color:var(--forest-900);font-size:1.6rem">${escapeHtml(selectedCandidate.name)}</h2>
+      <div class="panel-plain" style="text-align:center;padding:20px;border-color:var(--neon-purple);background:rgba(168,85,247,0.12)">
+        <h2 style="margin:0;color:var(--text-white);font-size:1.6rem">${escapeHtml(selectedCandidate.name)}</h2>
         <span class="meta">${escapeHtml(currentElection.position_name)}</span>
       </div>
-      <p style="margin-top:14px;font-size:0.86rem;color:var(--ink-600)">
+      <p style="margin-top:14px;font-size:0.86rem;color:var(--text-body)">
         <strong>Irreversible action:</strong> Once cast, your ballot cannot be altered or retracted. You are granted one vote per election.
       </p>
     `,
@@ -253,13 +253,13 @@ async function castVote() {
     document.getElementById("content").innerHTML = `
       <div class="receipt-box">
         <div style="font-size:2.8rem;margin-bottom:8px">🗳️</div>
-        <h1 style="margin:0 0 6px;color:var(--forest-900)">Vote Recorded</h1>
+        <h1 style="margin:0 0 6px;color:var(--text-white)">Vote Recorded</h1>
         <p class="meta" style="font-size:1rem;margin-bottom:16px">
           Thank you — your democratic vote in <strong>${escapeHtml(currentElection.title)}</strong> has been counted.
         </p>
 
-        <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:20px;font-size:0.85rem;color:var(--ink-600)">
-          <div><strong>Confirmation Token:</strong> <code>CL-${Math.random().toString(36).substring(2, 10).toUpperCase()}</code></div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px;margin-bottom:20px;font-size:0.85rem;color:var(--text-main)">
+          <div><strong>Confirmation Token:</strong> <code style="color:var(--neon-emerald)">CL-${Math.random().toString(36).substring(2, 10).toUpperCase()}</code></div>
           <div class="meta" style="margin-top:4px">Your ballot identity is cryptographically untraceable.</div>
         </div>
 

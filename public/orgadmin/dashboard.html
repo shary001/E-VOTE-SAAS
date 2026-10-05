@@ -61,7 +61,7 @@
       <span class="subtext" id="stat-roster-sub">Voters & candidates</span>
     </div>
     <div class="stat">
-      <span class="n" id="stat-ballots-total" style="color:var(--gold-600)">—</span>
+      <span class="n" id="stat-ballots-total" style="color:var(--neon-amber)">—</span>
       <span class="label">Ballots Cast</span>
       <span class="subtext">Across all elections</span>
     </div>
@@ -277,7 +277,7 @@ function renderTable() {
   tbody.innerHTML = filtered.map(e => `
     <tr>
       <td>
-        <a href="/orgadmin/election.html?id=${e.id}" style="color:var(--forest-950);font-weight:700;font-size:0.98rem">
+        <a href="/orgadmin/election.html?id=${e.id}" style="color:var(--text-white);font-weight:700;font-size:0.98rem">
           ${escapeHtml(e.title)}
         </a>
         <br>
@@ -295,7 +295,7 @@ function renderTable() {
       </td>
       <td><strong>${e.approved_candidates}</strong></td>
       <td>
-        <strong style="color:var(--forest-800)">${Number(e.ballots_cast).toLocaleString()}</strong>
+        <strong style="color:var(--neon-emerald)">${Number(e.ballots_cast).toLocaleString()}</strong>
       </td>
       <td>
         <div class="meta" style="font-size:0.82rem;line-height:1.4">

@@ -104,7 +104,7 @@ function showPromptModal({ title, message, label, placeholder = "", defaultValue
     : "";
 
   const bodyHtml = `
-    <p style="margin-bottom:14px;color:var(--ink-800)">${escapeHtml(message)}</p>
+    <p style="margin-bottom:14px;color:var(--text-main)">${escapeHtml(message)}</p>
     ${presetOptions}
     <div class="field" style="margin-bottom:0">
       <label for="prompt-modal-input">${escapeHtml(label)}</label>

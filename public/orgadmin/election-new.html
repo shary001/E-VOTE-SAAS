@@ -16,20 +16,23 @@
     flex-wrap: wrap;
   }
   .preset-btn {
-    background: var(--ivory-200);
-    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-full);
     padding: 6px 14px;
     font-size: 0.84rem;
     font-weight: 600;
-    color: var(--forest-800);
+    color: var(--text-main);
     cursor: pointer;
     transition: all 140ms ease;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
   }
   .preset-btn:hover {
-    background: var(--forest-800);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(56, 189, 248, 0.3));
     color: #fff;
-    border-color: var(--forest-800);
+    border-color: var(--neon-purple);
   }
   .timeline-grid {
     display: grid;
@@ -40,8 +43,8 @@
     .timeline-grid { grid-template-columns: 1fr; }
   }
   .validation-checklist {
-    background: var(--ivory-100);
-    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     padding: 12px 16px;
     margin-top: 14px;
@@ -52,7 +55,7 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
-    color: var(--ink-600);
+    color: var(--text-muted);
   }
   .check-item.valid { color: var(--success); font-weight: 600; }
   .check-item.invalid { color: var(--danger); font-weight: 600; }

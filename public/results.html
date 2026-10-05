@@ -10,25 +10,27 @@
 <link rel="stylesheet" href="/css/style.css">
 <style>
   .winner-banner {
-    background: linear-gradient(135deg, rgba(197, 155, 39, 0.12), rgba(27, 67, 50, 0.08));
-    border: 1px solid var(--gold-400);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(56, 189, 248, 0.2) 100%);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(168, 85, 247, 0.45);
     border-radius: var(--radius-lg);
-    padding: 28px;
+    padding: clamp(20px, 4vw, 30px);
     margin-bottom: 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
-    box-shadow: var(--shadow-gold);
+    box-shadow: 0 20px 50px rgba(168, 85, 247, 0.35);
     animation: scale-up 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .winner-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--gold-500);
-    color: var(--forest-950);
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: #FFFFFF;
     padding: 4px 12px;
     border-radius: var(--radius-full);
     font-size: 0.82rem;
@@ -36,19 +38,20 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     margin-bottom: 8px;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
   }
   .winner-name {
-    font-family: var(--serif);
-    font-size: 2rem;
-    color: var(--forest-900);
+    font-family: var(--sans);
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    color: var(--text-white);
     margin: 0 0 6px;
     line-height: 1.1;
   }
   .winner-tally {
-    font-family: var(--serif);
-    font-size: 2.4rem;
-    color: var(--forest-800);
-    font-weight: 700;
+    font-family: var(--sans);
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    color: var(--neon-emerald);
+    font-weight: 800;
     text-align: right;
   }
   .results-charts-grid {
@@ -62,44 +65,47 @@
     .winner-tally { text-align: left; }
   }
   .candidate-row-card {
-    background: var(--paper);
-    border: 1px solid var(--line);
+    background: var(--glass-bg-card);
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     padding: 16px 20px;
     margin-bottom: 12px;
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--glass-shadow);
     transition: transform 140ms ease, box-shadow 140ms ease;
   }
   .candidate-row-card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    box-shadow: var(--glass-shadow-hover);
+    border-color: var(--glass-border-hover);
   }
   .candidate-row-card.is-winner {
-    border-color: var(--gold-500);
-    background: linear-gradient(to right, #fff, var(--gold-100));
+    border-color: var(--neon-purple);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.18));
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);
   }
   .bar-track {
     height: 12px;
-    background: var(--ivory-200);
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     overflow: hidden;
     margin-top: 10px;
   }
   .bar-fill {
     height: 100%;
-    background: var(--forest-700);
+    background: var(--neon-cyan);
     border-radius: 6px;
     transition: width 800ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .candidate-row-card.is-winner .bar-fill {
-    background: var(--gold-500);
+    background: linear-gradient(90deg, var(--neon-purple), var(--neon-pink));
   }
 
   @media print {
     .topbar, .page-actions, #toast-container, a.meta { display: none !important; }
-    body { background: #fff !important; }
+    body { background: #080C14 !important; }
     .shell { max-width: 100% !important; padding: 0 !important; }
-    .winner-banner { box-shadow: none !important; border: 1px solid #000 !important; }
   }
 </style>
 </head>
@@ -114,7 +120,7 @@
   </div>
 
   <div id="alert-slot"></div>
-  <div id="content"><div class="panel-plain text-center" style="padding:48px 0;color:var(--ink-400)">Loading official certified results…</div></div>
+  <div id="content"><div class="panel-plain text-center" style="padding:48px 0;color:var(--text-muted)">Loading official certified results…</div></div>
 </main>
 
 <script src="/js/app.js"></script>
@@ -236,7 +242,7 @@ function render(election, results) {
                 ${c.statement ? `<p class="meta" style="margin:6px 0 0">${escapeHtml(c.statement)}</p>` : ""}
               </div>
               <div style="text-align:right;flex-shrink:0">
-                <span style="font-family:var(--serif);font-size:1.5rem;font-weight:700;color:var(--forest-800)">
+                <span style="font-family:var(--sans);font-size:1.5rem;font-weight:700;color:var(--neon-emerald)">
                   ${c.vote_count}
                 </span>
                 <span class="meta" style="display:block">${pct}%</span>
@@ -251,9 +257,9 @@ function render(election, results) {
     </div>
 
     <!-- Security & Anonymity Seal -->
-    <div class="panel-plain" style="margin-top:36px;background:var(--ivory-100);display:flex;align-items:center;gap:14px">
-      <div style="color:var(--forest-800)">${sealSvg()}</div>
-      <div style="font-size:0.86rem;color:var(--ink-600);line-height:1.4">
+    <div class="panel-plain" style="margin-top:36px;background:rgba(255,255,255,0.04);display:flex;align-items:center;gap:14px">
+      <div style="color:var(--neon-purple)">${sealSvg()}</div>
+      <div style="font-size:0.86rem;color:var(--text-body);line-height:1.4">
         <strong>Civic Ledger Cryptographic Guarantee:</strong> Every ballot was recorded with strict separation between voter identity and candidate selections. No double votes were permitted by the database constraints.
       </div>
     </div>

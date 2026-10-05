@@ -58,7 +58,7 @@
         <span class="subtext">Standard voting members</span>
       </div>
       <div class="stat">
-        <span class="n" id="stat-candidates" style="color:var(--forest-700)">0</span>
+        <span class="n" id="stat-candidates" style="color:var(--neon-emerald)">0</span>
         <span class="label">Approved Candidates</span>
         <span class="subtext">Running in 1+ elections</span>
       </div>
@@ -182,7 +182,7 @@ function render() {
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td><strong>${escapeHtml(r.full_name)}</strong></td>
-      <td><a href="mailto:${escapeHtml(r.email)}" class="meta" style="color:var(--forest-800)">${escapeHtml(r.email)}</a></td>
+      <td><a href="mailto:${escapeHtml(r.email)}" class="meta" style="color:var(--neon-cyan)">${escapeHtml(r.email)}</a></td>
       <td>
         <span class="badge ${r.role === "candidate" ? "badge-approved" : "badge-draft"}">
           ${r.role === "candidate" ? "★ Candidate" : "Voter"}
