@@ -13,7 +13,7 @@ router.post(
   "/elections/:electionId/apply",
   requireAuth, requireRole("member", "candidate"), requireVerifiedEmail, tenantScopeElection(),
   async (req, res) => {
-    const { statement, department } = req.body || {};
+    const { statement, department, photo_url, party_name, party_symbol_url, manifesto } = req.body || {};
     if (req.election.status !== "accepting_applications") {
       return res.status(409).json({ error: "This election isn't accepting applications right now." });
     }
@@ -26,6 +26,18 @@ router.post(
     if (statement.trim().length > 2000) {
       return res.status(400).json({ error: "Candidate statement must be 2000 characters or fewer." });
     }
+    if (manifesto && manifesto.trim().length > 10000) {
+      return res.status(400).json({ error: "Manifesto must be 10,000 characters or fewer." });
+    }
+
+    // URL validation helper
+    const isValidUrl = (s) => { try { const u = new URL(s); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; } };
+    if (photo_url && photo_url.trim() && !isValidUrl(photo_url.trim())) {
+      return res.status(400).json({ error: "photo_url must be a valid http/https URL." });
+    }
+    if (party_symbol_url && party_symbol_url.trim() && !isValidUrl(party_symbol_url.trim())) {
+      return res.status(400).json({ error: "party_symbol_url must be a valid http/https URL." });
+    }
 
     const { eligible, reasons } = evaluateEligibility(req.election.eligibility_rules, req.user, department);
     if (!eligible) {
@@ -34,9 +46,17 @@ router.post(
 
     try {
       const { rows } = await pool.query(
-        `insert into candidate_applications (election_id, user_id, statement)
-         values ($1, $2, $3) returning *`,
-        [req.election.id, req.user.id, statement.trim()]
+        `insert into candidate_applications
+           (election_id, user_id, statement, photo_url, party_name, party_symbol_url, manifesto)
+         values ($1, $2, $3, $4, $5, $6, $7) returning *`,
+        [
+          req.election.id, req.user.id,
+          statement.trim(),
+          (photo_url || "").trim(),
+          (party_name || "").trim(),
+          (party_symbol_url || "").trim(),
+          (manifesto || "").trim(),
+        ]
       );
       await logAction(req.user.id, req.user.organization_id, "candidate.applied", { election_id: req.election.id });
       res.status(201).json(rows[0]);
@@ -55,7 +75,8 @@ router.get(
   requireAuth, requireRole("org_admin"), tenantScopeElection(),
   async (req, res) => {
     const { rows } = await pool.query(
-      `select ca.*, u.full_name as applicant_name, u.email as applicant_email, u.created_at as applicant_since
+      `select ca.*, ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto,
+              u.full_name as applicant_name, u.email as applicant_email, u.created_at as applicant_since
          from candidate_applications ca
          join users u on u.id = ca.user_id
         where ca.election_id = $1

@@ -123,6 +123,35 @@
       </div>
     </fieldset>
 
+    <!-- Candidate Profile Fields (optional) -->
+    <fieldset>
+      <legend>Candidate Profile Fields</legend>
+      <p class="meta" style="margin-bottom:14px">Choose which extra fields candidates must fill in when applying. Disabled fields are hidden from the application form and ballot.</p>
+      <div style="display:grid;gap:10px">
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:var(--radius)">
+          <input type="checkbox" id="enable-photo" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--neon-purple)">
+          <span>
+            <strong style="display:block;margin-bottom:2px">Profile Photo</strong>
+            <span class="meta" style="font-size:0.84rem">Candidate provides a public URL to their headshot. Shown on the ballot and results page.</span>
+          </span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:var(--radius)">
+          <input type="checkbox" id="enable-party" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--neon-purple)">
+          <span>
+            <strong style="display:block;margin-bottom:2px">Party / Ticket Name &amp; Symbol</strong>
+            <span class="meta" style="font-size:0.84rem">Candidate enters their party name and a URL to their party logo. Both are shown on the ballot.</span>
+          </span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:var(--radius)">
+          <input type="checkbox" id="enable-manifesto" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--neon-purple)">
+          <span>
+            <strong style="display:block;margin-bottom:2px">Extended Manifesto</strong>
+            <span class="meta" style="font-size:0.84rem">Candidate writes a full manifesto (up to 10,000 chars) in addition to their short ballot statement. Shown as an expandable section on the ballot.</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
     <!-- Timeline & Schedule -->
     <fieldset>
       <legend>Official Timeline & Schedule</legend>
@@ -314,6 +343,9 @@ form.addEventListener("submit", async (e) => {
       min_account_age_days: Number(document.getElementById("min-days").value) || 0,
       allowed_departments: departments,
       criteria_text: document.getElementById("criteria").value.trim(),
+      enable_photo: document.getElementById("enable-photo").checked,
+      enable_party: document.getElementById("enable-party").checked,
+      enable_manifesto: document.getElementById("enable-manifesto").checked,
     },
     application_open_at: new Date(appOpenInput.value).toISOString(),
     application_close_at: new Date(appCloseInput.value).toISOString(),

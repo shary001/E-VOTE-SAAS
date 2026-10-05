@@ -169,12 +169,13 @@ router.get("/:electionId/analytics", requireAuth, tenantScopeElection(), async (
   if (req.election.results_published || isOrgAdmin || isSuperAdmin) {
     const candRes = await pool.query(
       `select ca.id as candidate_application_id, u.full_name as candidate_name, ca.statement,
+              ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto,
               count(v.id)::int as vote_count
          from candidate_applications ca
          join users u on u.id = ca.user_id
          left join votes v on v.candidate_application_id = ca.id
         where ca.election_id = $1 and ca.status = 'approved'
-        group by ca.id, u.full_name, ca.statement
+        group by ca.id, u.full_name, ca.statement, ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto
         order by vote_count desc, candidate_name asc`,
       [req.election.id]
     );
@@ -203,12 +204,13 @@ router.get("/:electionId/results", requireAuth, tenantScopeElection(), async (re
   }
   const { rows } = await pool.query(
     `select ca.id as candidate_application_id, u.full_name as candidate_name, ca.statement,
+            ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto,
             count(v.id)::int as vote_count
        from candidate_applications ca
        join users u on u.id = ca.user_id
        left join votes v on v.candidate_application_id = ca.id
       where ca.election_id = $1 and ca.status = 'approved'
-      group by ca.id, u.full_name, ca.statement
+      group by ca.id, u.full_name, ca.statement, ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto
       order by vote_count desc, candidate_name asc`,
     [req.election.id]
   );
@@ -227,12 +229,13 @@ router.get("/:electionId/export/results", requireAuth, tenantScopeElection(), as
 
   const { rows } = await pool.query(
     `select ca.id as candidate_application_id, u.full_name as candidate_name, ca.statement,
+            ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto,
             count(v.id)::int as vote_count
        from candidate_applications ca
        join users u on u.id = ca.user_id
        left join votes v on v.candidate_application_id = ca.id
       where ca.election_id = $1 and ca.status = 'approved'
-      group by ca.id, u.full_name, ca.statement
+      group by ca.id, u.full_name, ca.statement, ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto
       order by vote_count desc, candidate_name asc`,
     [req.election.id]
   );

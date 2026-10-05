@@ -45,6 +45,9 @@ let currentElection = null;
 api("GET", `/elections/${electionId}`).then(election => {
   currentElection = election;
   const rules = election.eligibility_rules || {};
+  const enablePhoto    = !!rules.enable_photo;
+  const enableParty    = !!rules.enable_party;
+  const enableManifesto = !!rules.enable_manifesto;
 
   document.getElementById("content").innerHTML = `
     <div class="page-head" style="margin-bottom:18px">
@@ -85,14 +88,54 @@ api("GET", `/elections/${electionId}`).then(election => {
         </div>
       ` : ""}
 
+      <!-- Profile Photo (optional per election) -->
+      ${enablePhoto ? `
+        <div class="field">
+          <label for="photo-url">Profile Photo URL</label>
+          <input type="url" id="photo-url" placeholder="https://example.com/your-photo.jpg">
+          <div class="hint">Public link to your headshot (JPEG or PNG). Shown on the ballot next to your name.</div>
+          <div id="photo-preview" style="margin-top:8px;display:none">
+            <img id="photo-img" src="" alt="Photo preview" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--glass-border)">
+          </div>
+        </div>
+      ` : ""}
+
+      <!-- Party / Ticket (optional per election) -->
+      ${enableParty ? `
+        <div class="field">
+          <label for="party-name">Party / Ticket Name</label>
+          <input type="text" id="party-name" maxlength="100" placeholder="e.g. Progress Alliance, Unity Ticket">
+        </div>
+        <div class="field">
+          <label for="party-symbol-url">Party Symbol / Logo URL</label>
+          <input type="url" id="party-symbol-url" placeholder="https://example.com/party-logo.png">
+          <div class="hint">Public link to a small logo image. Shown on the ballot beside your party name.</div>
+          <div id="symbol-preview" style="margin-top:8px;display:none">
+            <img id="symbol-img" src="" alt="Symbol preview" style="width:60px;height:60px;border-radius:8px;object-fit:contain;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);padding:4px">
+          </div>
+        </div>
+      ` : ""}
+
       <div class="field">
-        <label for="statement">Candidate Statement / Manifesto *</label>
+        <label for="statement">Candidate Statement *</label>
         <textarea id="statement" required rows="5" minlength="20" maxlength="2000" placeholder="Outline your vision, goals, and why fellow members should elect you to this office…"></textarea>
         <div style="display:flex;justify-content:space-between;margin-top:4px" class="meta">
           <span>Visible on the official ballot. 20–2000 characters.</span>
           <span id="char-count" style="font-weight:600">0 / 2000</span>
         </div>
       </div>
+
+      <!-- Extended Manifesto (optional per election) -->
+      ${enableManifesto ? `
+        <div class="field">
+          <label for="manifesto">Extended Manifesto</label>
+          <textarea id="manifesto" rows="8" maxlength="10000" placeholder="Write your full platform, policy positions, and detailed plans here…"></textarea>
+          <div style="display:flex;justify-content:space-between;margin-top:4px" class="meta">
+            <span>Full manifesto — shown as an expandable section on the ballot. Up to 10,000 characters.</span>
+            <span id="manifesto-count" style="font-weight:600">0 / 10000</span>
+          </div>
+        </div>
+      ` : ""}
 
       <div style="margin-top:24px;display:flex;gap:12px;align-items:center">
         <button class="btn btn-primary" type="submit" id="submit-btn">Submit Candidacy &rarr;</button>
@@ -101,7 +144,7 @@ api("GET", `/elections/${electionId}`).then(election => {
     </form>
   `;
 
-  // Character counter with colour feedback
+  // Character counter for statement
   const textarea = document.getElementById("statement");
   const charCount = document.getElementById("char-count");
   if (textarea && charCount) {
@@ -112,6 +155,51 @@ api("GET", `/elections/${electionId}`).then(election => {
     });
   }
 
+  // Character counter for manifesto
+  const manifestoArea = document.getElementById("manifesto");
+  const manifestoCount = document.getElementById("manifesto-count");
+  if (manifestoArea && manifestoCount) {
+    manifestoArea.addEventListener("input", () => {
+      const len = manifestoArea.value.length;
+      manifestoCount.textContent = `${len} / 10000`;
+      manifestoCount.style.color = len > 9500 ? "var(--warning)" : "var(--success)";
+    });
+  }
+
+  // Photo URL live preview
+  const photoInput = document.getElementById("photo-url");
+  if (photoInput) {
+    photoInput.addEventListener("input", () => {
+      const url = photoInput.value.trim();
+      const preview = document.getElementById("photo-preview");
+      const img = document.getElementById("photo-img");
+      if (url) {
+        img.src = url;
+        preview.style.display = "block";
+        img.onerror = () => { preview.style.display = "none"; };
+      } else {
+        preview.style.display = "none";
+      }
+    });
+  }
+
+  // Party symbol URL live preview
+  const symbolInput = document.getElementById("party-symbol-url");
+  if (symbolInput) {
+    symbolInput.addEventListener("input", () => {
+      const url = symbolInput.value.trim();
+      const preview = document.getElementById("symbol-preview");
+      const img = document.getElementById("symbol-img");
+      if (url) {
+        img.src = url;
+        preview.style.display = "block";
+        img.onerror = () => { preview.style.display = "none"; };
+      } else {
+        preview.style.display = "none";
+      }
+    });
+  }
+
   // Form submit
   document.getElementById("apply-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -119,12 +207,18 @@ api("GET", `/elections/${electionId}`).then(election => {
     const deptField = document.getElementById("department");
     alertSlot.innerHTML = "";
 
-    const statement = document.getElementById("statement").value.trim();
-    const department = deptField ? deptField.value.trim() : undefined;
+    const statement   = document.getElementById("statement").value.trim();
+    const department  = deptField ? deptField.value.trim() : undefined;
+    const photo_url   = (document.getElementById("photo-url")?.value || "").trim();
+    const party_name  = (document.getElementById("party-name")?.value || "").trim();
+    const party_symbol_url = (document.getElementById("party-symbol-url")?.value || "").trim();
+    const manifesto   = (document.getElementById("manifesto")?.value || "").trim();
 
     setButtonBusy(submitBtn, true, "Submitting Application…");
     try {
-      await api("POST", `/elections/${electionId}/apply`, { statement, department });
+      await api("POST", `/elections/${electionId}/apply`, {
+        statement, department, photo_url, party_name, party_symbol_url, manifesto,
+      });
 
       showToast("Candidacy application submitted!", "success");
       fireConfetti();

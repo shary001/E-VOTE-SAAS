@@ -35,13 +35,14 @@ router.get(
       return res.status(409).json({ error: "You've already voted in this election." });
     }
     const { rows } = await pool.query(
-      `select ca.id as candidate_application_id, u.full_name as candidate_name, ca.statement
+      `select ca.id as candidate_application_id, u.full_name as candidate_name, ca.statement,
+              ca.photo_url, ca.party_name, ca.party_symbol_url, ca.manifesto
          from candidate_applications ca join users u on u.id = ca.user_id
         where ca.election_id = $1 and ca.status = 'approved'
         order by u.full_name asc`,
       [req.election.id]
     );
-    res.json({ election: { id: req.election.id, title: req.election.title, position_name: req.election.position_name }, candidates: rows });
+    res.json({ election: { id: req.election.id, title: req.election.title, position_name: req.election.position_name, eligibility_rules: req.election.eligibility_rules }, candidates: rows });
   }
 );
 
