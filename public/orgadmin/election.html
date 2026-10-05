@@ -282,6 +282,14 @@ function render() {
             <td class="meta">Requirements:</td>
             <td>${escapeHtml(election.eligibility_rules?.criteria_text || "Standard organizational membership")}</td>
           </tr>
+          <tr>
+            <td class="meta">Profile Fields:</td>
+            <td>
+              <span class="badge ${election.eligibility_rules?.enable_photo ? 'badge-approved' : 'badge-draft'}" style="font-size:0.75rem">Photo: ${election.eligibility_rules?.enable_photo ? 'On' : 'Off'}</span>
+              <span class="badge ${election.eligibility_rules?.enable_party ? 'badge-approved' : 'badge-draft'}" style="font-size:0.75rem">Party: ${election.eligibility_rules?.enable_party ? 'On' : 'Off'}</span>
+              <span class="badge ${election.eligibility_rules?.enable_manifesto ? 'badge-approved' : 'badge-draft'}" style="font-size:0.75rem">Manifesto: ${election.eligibility_rules?.enable_manifesto ? 'On' : 'Off'}</span>
+            </td>
+          </tr>
         </table>
       </div>
 
@@ -378,13 +386,30 @@ function renderApplicationsList(applications) {
   return filtered.map(a => `
     <tr>
       <td>
-        <strong>${escapeHtml(a.applicant_name)}</strong>
-        <br><small class="meta">${escapeHtml(a.applicant_email)}</small>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${a.photo_url ? `<img src="${escapeHtml(a.photo_url)}" alt="photo" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--glass-border);flex-shrink:0" onerror="this.style.display='none'">` : ''}
+          <div>
+            <strong>${escapeHtml(a.applicant_name)}</strong>
+            ${(a.party_name || a.party_symbol_url) ? `
+              <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                ${a.party_symbol_url ? `<img src="${escapeHtml(a.party_symbol_url)}" style="width:14px;height:14px;border-radius:2px;object-fit:contain" onerror="this.style.display='none'">` : ''}
+                ${a.party_name ? `<span style="font-size:0.75rem;font-weight:700;color:var(--neon-amber)">${escapeHtml(a.party_name)}</span>` : ''}
+              </div>
+            ` : ''}
+            <small class="meta" style="display:block">${escapeHtml(a.applicant_email)}</small>
+          </div>
+        </div>
       </td>
-      <td style="max-width:320px">
+      <td style="max-width:340px">
         <div style="font-size:0.9rem;line-height:1.4">
           ${escapeHtml(a.statement || "—")}
         </div>
+        ${a.manifesto ? `
+          <details style="margin-top:6px;font-size:0.82rem;color:var(--neon-cyan)">
+            <summary style="cursor:pointer;font-weight:600">View Manifesto</summary>
+            <div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-body);white-space:pre-wrap;line-height:1.5">${escapeHtml(a.manifesto)}</div>
+          </details>
+        ` : ''}
       </td>
       <td class="meta">${fmtDate(a.applied_at)}</td>
       <td>

@@ -252,6 +252,12 @@ function render(election, results) {
                     ${c.party_name ? `<span style="font-size:0.76rem;font-weight:700;color:var(--neon-amber);letter-spacing:0.04em;text-transform:uppercase">${escapeHtml(c.party_name)}</span>` : ''}
                   </div>` : ''}
                   ${c.statement ? `<p class="meta" style="margin:5px 0 0;font-size:0.87rem">${escapeHtml(c.statement)}</p>` : ""}
+                  ${c.manifesto ? `
+                    <details style="margin-top:6px;font-size:0.82rem;color:var(--neon-cyan)">
+                      <summary style="cursor:pointer;font-weight:600">View Manifesto</summary>
+                      <div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-body);white-space:pre-wrap;line-height:1.5">${escapeHtml(c.manifesto)}</div>
+                    </details>
+                  ` : ''}
                 </div>
               </div>
               <div style="text-align:right;flex-shrink:0">

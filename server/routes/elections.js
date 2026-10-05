@@ -249,6 +249,7 @@ router.get("/:electionId/export/results", requireAuth, tenantScopeElection(), as
     election_title: req.election.title,
     position: req.election.position_name,
     candidate_name: r.candidate_name,
+    party_name: r.party_name || "",
     vote_count: r.vote_count,
     vote_percentage: totalVotes > 0 ? ((r.vote_count / totalVotes) * 100).toFixed(1) + "%" : "0.0%",
   }));
@@ -257,6 +258,7 @@ router.get("/:electionId/export/results", requireAuth, tenantScopeElection(), as
     { key: "election_title", label: "Election Title" },
     { key: "position", label: "Position" },
     { key: "candidate_name", label: "Candidate Name" },
+    { key: "party_name", label: "Party / Ticket" },
     { key: "vote_count", label: "Votes Received" },
     { key: "vote_percentage", label: "Vote Share %" },
   ];
@@ -270,7 +272,8 @@ router.get("/:electionId/export/results", requireAuth, tenantScopeElection(), as
 // CSV export for candidate applications
 router.get("/:electionId/export/applications", requireAuth, requireRole("org_admin", "super_admin"), tenantScopeElection(), async (req, res) => {
   const { rows } = await pool.query(
-    `select ca.id, u.full_name as applicant_name, u.email as applicant_email, ca.statement,
+    `select ca.id, u.full_name as applicant_name, u.email as applicant_email,
+            ca.party_name, ca.party_symbol_url, ca.photo_url, ca.statement, ca.manifesto,
             ca.status, ca.applied_at, ca.reviewed_at, ca.review_note
        from candidate_applications ca
        join users u on u.id = ca.user_id
@@ -283,7 +286,11 @@ router.get("/:electionId/export/applications", requireAuth, requireRole("org_adm
     { key: "id", label: "Application ID" },
     { key: "applicant_name", label: "Applicant Name" },
     { key: "applicant_email", label: "Email" },
+    { key: "party_name", label: "Party / Ticket" },
+    { key: "party_symbol_url", label: "Party Symbol URL" },
+    { key: "photo_url", label: "Photo URL" },
     { key: "statement", label: "Statement" },
+    { key: "manifesto", label: "Manifesto" },
     { key: "status", label: "Status" },
     { key: "applied_at", label: "Applied At" },
     { key: "reviewed_at", label: "Reviewed At" },
