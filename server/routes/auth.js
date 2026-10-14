@@ -95,6 +95,8 @@ router.post("/register", registerLimiter, async (req, res) => {
           ? "Registration successful, but the verification email could not be delivered. Use Resend code; email verification is still required, and your organization awaits platform admin approval."
           : "Account created, but the verification email could not be delivered. Use Resend code on the verification page before logging in.",
       verification_email_sent: emailResult.sent,
+      delivery_reason: emailResult.reason || null,
+      delivery_error: emailResult.error || null,
       email: user.email,
       organization_pending: mode === "create_org",
     });
@@ -169,7 +171,14 @@ router.post("/resend-verification", emailActionLimiter, async (req, res) => {
               email_verify_code_hash = $3, email_verify_code_expires = $4 where id = $5`,
       [token, expires, codeHash, codeExpires, rows[0].id]
     );
-    await sendVerificationEmail(email, rows[0].full_name, token, code);
+    const emailResult = await sendVerificationEmail(email, rows[0].full_name, token, code);
+    if (!emailResult.sent) {
+      return res.status(503).json({
+        message: "If that account exists and isn't verified yet, a new link was requested, but the email could not be delivered.",
+        delivery_reason: emailResult.reason || null,
+        delivery_error: emailResult.error || null,
+      });
+    }
   }
   res.json({ message: "If that account exists and isn't verified yet, a new link has been sent." });
 });

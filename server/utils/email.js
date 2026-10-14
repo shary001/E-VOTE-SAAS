@@ -58,20 +58,22 @@ async function sendPasswordResetEmail(to, fullName, token) {
 }
 
 async function sendMail(to, subject, html) {
-  if (!process.env.SMTP_HOST) {
-    // No SMTP configured yet (e.g. first local run) — log instead of throwing,
-    // so the rest of the flow (esp. during development) isn't blocked.
-    console.log(`[email:skip - no SMTP_HOST set] to=${to} subject="${subject}"`);
-    return { sent: false, reason: "not_configured" };
+  const missing = ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"].filter((key) => !process.env[key]);
+  if (missing.length) {
+    const message = `Missing SMTP configuration: ${missing.join(", ")}`;
+    console.error(`[email:error] ${message}`);
+    return { sent: false, reason: "not_configured", error: message };
   }
+
   try {
     await transporter.sendMail({ from: FROM, to, subject, html });
     return { sent: true };
   } catch (err) {
     // Email is a notification side effect; an SMTP outage must not undo a
     // committed account, application decision, or password-reset request.
-    console.error(`[email:error] ${err.message}`);
-    return { sent: false, reason: "delivery_failed" };
+    const message = err?.response || err?.message || "SMTP delivery failed";
+    console.error(`[email:error] ${message}`);
+    return { sent: false, reason: "delivery_failed", error: message };
   }
 }
 
