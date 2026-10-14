@@ -19,3 +19,16 @@ ALTER TABLE candidate_applications
 -- Extended manifesto (separate from the short `statement` field)
 ALTER TABLE candidate_applications
   ADD COLUMN IF NOT EXISTS manifesto TEXT DEFAULT '';
+
+-- Organization contact metadata for follow-up and support.
+ALTER TABLE organizations
+  ADD COLUMN IF NOT EXISTS contact_email TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS contact_phone TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+
+-- Auto-verify all accounts for the simplified workflow.
+ALTER TABLE users
+  ALTER COLUMN email_verified SET DEFAULT true;
+UPDATE users
+   SET email_verified = true
+ WHERE email_verified = false;

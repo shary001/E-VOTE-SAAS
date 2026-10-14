@@ -11,8 +11,11 @@ create table organizations (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
   slug          text not null unique,               -- url-safe identifier, e.g. "mru-guild"
-  status        text not null default 'pending'      -- pending | active | suspended
+  status        text not null default 'active'      -- active | suspended (approval is now automatic)
                   check (status in ('pending','active','suspended')),
+  contact_email text default '',
+  contact_phone text default '',
+  notes         text default '',
   created_at    timestamptz not null default now()
 );
 
@@ -39,7 +42,7 @@ create table users (
   full_name           text not null,
   role                text not null default 'member'
                         check (role in ('super_admin','org_admin','member','candidate')),
-  email_verified      boolean not null default false,
+  email_verified      boolean not null default true,
   email_verify_token  text,
   email_verify_expires timestamptz,
   email_verify_code_hash text,
@@ -101,6 +104,10 @@ create table candidate_applications (
   election_id    uuid not null references elections(id) on delete cascade,
   user_id        uuid not null references users(id) on delete cascade,
   statement      text not null default '',
+  photo_url      text default '',
+  party_name     text default '',
+  party_symbol_url text default '',
+  manifesto      text default '',
   status         text not null default 'pending'
                    check (status in ('pending','approved','rejected')),
   review_note    text default '',

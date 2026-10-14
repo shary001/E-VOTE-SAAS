@@ -172,8 +172,10 @@ router.get("/organizations/:id", async (req, res) => {
 // Update organization details (name, slug)
 router.patch("/organizations/:id", async (req, res) => {
   if (!UUID_REGEX.test(req.params.id)) return res.status(404).json({ error: "Organization not found." });
-  const { name, slug } = req.body || {};
-  if (!name && !slug) return res.status(400).json({ error: "At least one of name or slug is required." });
+  const { name, slug, contact_email, contact_phone, notes } = req.body || {};
+  if (!name && !slug && !contact_email && !contact_phone && !notes) {
+    return res.status(400).json({ error: "At least one organization field is required to update." });
+  }
 
   const updates = [];
   const values = [];
@@ -188,6 +190,18 @@ router.patch("/organizations/:id", async (req, res) => {
     if (existing.rows.length) return res.status(409).json({ error: "Organization slug is already in use." });
     values.push(cleanSlug);
     updates.push(`slug = $${values.length}`);
+  }
+  if (contact_email !== undefined) {
+    values.push(String(contact_email || "").trim());
+    updates.push(`contact_email = $${values.length}`);
+  }
+  if (contact_phone !== undefined) {
+    values.push(String(contact_phone || "").trim());
+    updates.push(`contact_phone = $${values.length}`);
+  }
+  if (notes !== undefined) {
+    values.push(String(notes || "").trim());
+    updates.push(`notes = $${values.length}`);
   }
 
   values.push(req.params.id);

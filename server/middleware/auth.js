@@ -37,9 +37,8 @@ function requireRole(...roles) {
 }
 
 function requireVerifiedEmail(req, res, next) {
-  if (!req.user.email_verified) {
-    return res.status(403).json({ error: "Please verify your email first." });
-  }
+  // Accounts are auto-verified by default; customer support can still suspend or
+  // reactivate accounts centrally without blocking a valid session.
   next();
 }
 

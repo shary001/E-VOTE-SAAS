@@ -31,12 +31,17 @@ router.post(
     }
 
     // URL validation helper
-    const isValidUrl = (s) => { try { const u = new URL(s); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; } };
+    const isValidUrl = (s) => {
+      const trimmed = s.trim();
+      if (!trimmed) return true;
+      if (trimmed.startsWith("data:image/")) return true;
+      try { const u = new URL(trimmed); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; }
+    };
     if (photo_url && photo_url.trim() && !isValidUrl(photo_url.trim())) {
-      return res.status(400).json({ error: "photo_url must be a valid http/https URL." });
+      return res.status(400).json({ error: "photo_url must be a valid http/https URL or a data:image upload." });
     }
     if (party_symbol_url && party_symbol_url.trim() && !isValidUrl(party_symbol_url.trim())) {
-      return res.status(400).json({ error: "party_symbol_url must be a valid http/https URL." });
+      return res.status(400).json({ error: "party_symbol_url must be a valid http/https URL or a data:image upload." });
     }
 
     const { eligible, reasons } = evaluateEligibility(req.election.eligibility_rules, req.user, department);

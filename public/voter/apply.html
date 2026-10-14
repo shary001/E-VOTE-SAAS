@@ -91,9 +91,10 @@ api("GET", `/elections/${electionId}`).then(election => {
       <!-- Profile Photo (optional per election) -->
       ${enablePhoto ? `
         <div class="field">
-          <label for="photo-url">Profile Photo URL</label>
-          <input type="url" id="photo-url" placeholder="https://example.com/your-photo.jpg">
-          <div class="hint">Public link to your headshot (JPEG or PNG). Shown on the ballot next to your name.</div>
+          <label for="photo-file">Profile Photo Upload</label>
+          <input type="file" id="photo-file" accept="image/*">
+          <div class="hint">Upload a headshot image or paste a URL below. Shown on the ballot next to your name.</div>
+          <input type="url" id="photo-url" placeholder="Or paste a public image URL here" style="margin-top:8px">
           <div id="photo-preview" style="margin-top:8px;display:none">
             <img id="photo-img" src="" alt="Photo preview" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--glass-border)">
           </div>
@@ -107,9 +108,10 @@ api("GET", `/elections/${electionId}`).then(election => {
           <input type="text" id="party-name" maxlength="100" placeholder="e.g. Progress Alliance, Unity Ticket">
         </div>
         <div class="field">
-          <label for="party-symbol-url">Party Symbol / Logo URL</label>
-          <input type="url" id="party-symbol-url" placeholder="https://example.com/party-logo.png">
-          <div class="hint">Public link to a small logo image. Shown on the ballot beside your party name.</div>
+          <label for="party-symbol-file">Party Symbol / Logo Upload</label>
+          <input type="file" id="party-symbol-file" accept="image/*">
+          <div class="hint">Upload a party badge or paste a public image URL below. Shown on the ballot beside your party name.</div>
+          <input type="url" id="party-symbol-url" placeholder="Or paste a public logo URL here" style="margin-top:8px">
           <div id="symbol-preview" style="margin-top:8px;display:none">
             <img id="symbol-img" src="" alt="Symbol preview" style="width:60px;height:60px;border-radius:8px;object-fit:contain;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);padding:4px">
           </div>
@@ -183,6 +185,27 @@ api("GET", `/elections/${electionId}`).then(election => {
     });
   }
 
+  const photoFileInput = document.getElementById("photo-file");
+  if (photoFileInput) {
+    photoFileInput.addEventListener("change", async () => {
+      const file = photoFileInput.files && photoFileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const value = String(reader.result || "");
+        const urlInput = document.getElementById("photo-url");
+        if (urlInput) urlInput.value = value;
+        const preview = document.getElementById("photo-preview");
+        const img = document.getElementById("photo-img");
+        if (value) {
+          img.src = value;
+          preview.style.display = "block";
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Party symbol URL live preview
   const symbolInput = document.getElementById("party-symbol-url");
   if (symbolInput) {
@@ -197,6 +220,27 @@ api("GET", `/elections/${electionId}`).then(election => {
       } else {
         preview.style.display = "none";
       }
+    });
+  }
+
+  const symbolFileInput = document.getElementById("party-symbol-file");
+  if (symbolFileInput) {
+    symbolFileInput.addEventListener("change", async () => {
+      const file = symbolFileInput.files && symbolFileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const value = String(reader.result || "");
+        const urlInput = document.getElementById("party-symbol-url");
+        if (urlInput) urlInput.value = value;
+        const preview = document.getElementById("symbol-preview");
+        const img = document.getElementById("symbol-img");
+        if (value) {
+          img.src = value;
+          preview.style.display = "block";
+        }
+      };
+      reader.readAsDataURL(file);
     });
   }
 

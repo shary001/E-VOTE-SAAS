@@ -372,10 +372,9 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   setButtonBusy(submitBtn, true, 'Creating account');
   try {
     const result = await api('POST', '/auth/register', payload);
-    alertSlot.innerHTML = `<div class="alert alert-success">Account created! Redirecting to email verification…</div>`;
-    // Auto-redirect to verify-email with email pre-filled after a short delay
+    alertSlot.innerHTML = `<div class="alert alert-success">${escapeHtml(result.message || 'Account created successfully! Redirecting to login…')}</div>`;
     setTimeout(() => {
-      window.location.href = `/verify-email.html?email=${encodeURIComponent(result.email || payload.email)}`;
+      window.location.href = '/login.html';
     }, 1400);
   } catch (err) {
     alertSlot.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;

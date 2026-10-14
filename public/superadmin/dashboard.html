@@ -378,7 +378,8 @@ function renderOrgsTable() {
       const matchName = (o.name || "").toLowerCase().includes(search);
       const matchSlug = (o.slug || "").toLowerCase().includes(search);
       const matchAdmin = (o.admin_email || "").toLowerCase().includes(search);
-      if (!matchName && !matchSlug && !matchAdmin) return false;
+      const matchContact = (o.contact_email || "").toLowerCase().includes(search);
+      if (!matchName && !matchSlug && !matchAdmin && !matchContact) return false;
     }
     return true;
   });
@@ -401,7 +402,9 @@ function renderOrgsTable() {
         </span>
       </td>
       <td>
-        <span class="meta">${escapeHtml(o.admin_email || "Pending verification")}</span>
+        <div class="meta"><strong>${escapeHtml(o.admin_email || "Pending verification")}</strong></div>
+        ${o.contact_email ? `<div class="meta"><a href="mailto:${encodeURIComponent(o.contact_email)}" style="color:var(--neon-cyan)">${escapeHtml(o.contact_email)}</a></div>` : ""}
+        ${o.contact_phone ? `<div class="meta">${escapeHtml(o.contact_phone)}</div>` : ""}
       </td>
       <td><strong>${Number(o.member_count).toLocaleString()}</strong></td>
       <td>${Number(o.election_count).toLocaleString()}</td>
@@ -411,41 +414,72 @@ function renderOrgsTable() {
       <td style="text-align:right">
         <div style="display:inline-flex;gap:6px;justify-content:flex-end">
           <button class="btn btn-sm btn-ghost" data-view-org="${o.id}">Details</button>
-          <button class="btn btn-sm btn-ghost" data-edit-org="${o.id}" data-name="${escapeHtml(o.name)}" data-slug="${escapeHtml(o.slug)}">Edit</button>
+          <button class="btn btn-sm btn-ghost" data-edit-org="${o.id}" data-name="${escapeHtml(o.name)}" data-slug="${escapeHtml(o.slug)}" data-contact-email="${escapeHtml(o.contact_email || '')}" data-contact-phone="${escapeHtml(o.contact_phone || '')}" data-notes="${escapeHtml(o.notes || '')}">Edit</button>
           ${actionBtnFor(o)}
+          ${o.contact_email ? `<a class="btn btn-sm btn-ghost" href="mailto:${encodeURIComponent(o.contact_email)}">Contact</a>` : ""}
           <button class="btn btn-sm btn-danger" data-delete-org="${o.id}" data-name="${escapeHtml(o.name)}">Delete</button>
         </div>
       </td>
     </tr>
   `).join("");
 
-  // Attach status change events
   tbody.querySelectorAll("[data-set-status]").forEach(btn => {
     btn.addEventListener("click", () => {
       const orgId = btn.dataset.id;
       const targetStatus = btn.dataset.setStatus;
       const orgName = btn.dataset.name;
-
       const titles = {
-        active: "Approve Organization",
+        active: "Resume Organization",
         suspended: "Suspend Organization",
       };
       const messages = {
-        active: `Are you sure you want to approve <strong>${escapeHtml(orgName)}</strong>? This will activate their elections and allow them to open voting.`,
+        active: `Are you sure you want to resume <strong>${escapeHtml(orgName)}</strong>? This will restore normal platform access for the organization.`,
         suspended: `Are you sure you want to suspend <strong>${escapeHtml(orgName)}</strong>? Elections will be temporarily paused until reinstated.`,
       };
 
       showModal({
         title: titles[targetStatus] || "Update Organization Status",
         bodyHtml: `<p>${messages[targetStatus] || "Proceed with status update?"}</p>`,
-        confirmText: targetStatus === "suspended" ? "Suspend Organization" : "Approve Organization",
+        confirmText: targetStatus === "suspended" ? "Suspend Organization" : "Resume Organization",
         isDanger: targetStatus === "suspended",
         onConfirm: async () => {
           await api("PATCH", `/superadmin/organizations/${orgId}/status`, { status: targetStatus });
           showToast(`Organization status updated to ${targetStatus}`, "success");
-          if (targetStatus === "active") fireConfetti();
-          await 
-// ---------------- User Table & CRUD Functions
+          await loadData();
+        }
+      });
+    });
+  });
+
+  tbody.querySelectorAll("[data-view-org]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const org = rawOrgs.find(x => x.id === btn.dataset.viewOrg);
+      if (!org) return;
+      showModal({
+        title: org.name,
+        bodyHtml: `
+          <div style="display:grid;gap:12px;font-size:0.92rem">
+            <div><small class="meta">ORGANIZATION ID</small><br><code>${org.id}</code></div>
+            <div><small class="meta">SLUG</small><br><code>/${escapeHtml(org.slug)}</code></div>
+            <div><small class="meta">CURRENT STATUS</small><br><span class="badge badge-${badgeClass(org.status)}">${org.status}</span></div>
+            <div><small class="meta">PRIMARY ADMIN EMAIL</small><br><strong>${escapeHtml(org.admin_email || "None")}</strong></div>
+            <div><small class="meta">CONTACT EMAIL</small><br>${org.contact_email ? `<a href="mailto:${encodeURIComponent(org.contact_email)}">${escapeHtml(org.contact_email)}</a>` : "—"}</div>
+            <div><small class="meta">CONTACT PHONE</small><br>${escapeHtml(org.contact_phone || "—")}</div>
+            <div><small class="meta">NOTES</small><br>${escapeHtml(org.notes || "No follow-up notes recorded.")}</div>
+            <div><small class="meta">TOTAL MEMBERS</small><br><strong>${org.member_count}</strong></div>
+            <div><small class="meta">TOTAL ELECTIONS</small><br><strong>${org.election_count}</strong></div>
+            <div><small class="meta">REGISTERED ON</small><br>${fmtDate(org.created_at)} (${fmtTimeAgo(org.created_at)})</div>
+          </div>
+        `,
+        confirmText: "Close",
+        cancelText: "",
+      });
+    });
+  });
+
+  // renderUsersTable remains below; event handlers attach after the table is rebuilt.
+}
+
 function renderUsersTable() {
   const search = (document.getElementById("user-search")?.value || "").toLowerCase().trim();
 
@@ -661,7 +695,7 @@ document.getElementById("new-user-btn")?.addEventListener("click", () => {
 });
 
 // Edit Organization Modal
-function openEditOrgModal(orgId, currentName, currentSlug) {
+function openEditOrgModal(orgId, currentName, currentSlug, currentContactEmail = "", currentContactPhone = "", currentNotes = "") {
   showModal({
     title: `Edit Organization: ${currentName}`,
     bodyHtml: `
@@ -674,14 +708,29 @@ function openEditOrgModal(orgId, currentName, currentSlug) {
         <input type="text" id="edit-org-slug" value="${escapeHtml(currentSlug)}" required>
         <div class="hint">Url-friendly identifier, e.g. "mru-guild"</div>
       </div>
+      <div class="field">
+        <label for="edit-org-contact-email">Contact Email</label>
+        <input type="email" id="edit-org-contact-email" value="${escapeHtml(currentContactEmail)}" placeholder="org@example.com">
+      </div>
+      <div class="field">
+        <label for="edit-org-contact-phone">Contact Phone</label>
+        <input type="tel" id="edit-org-contact-phone" value="${escapeHtml(currentContactPhone)}" placeholder="+1 (555) 123-4567">
+      </div>
+      <div class="field">
+        <label for="edit-org-notes">Internal Notes</label>
+        <textarea id="edit-org-notes" rows="4" placeholder="Add notes for follow-up or verification details…">${escapeHtml(currentNotes)}</textarea>
+      </div>
     `,
     confirmText: "Update Organization",
     onConfirm: async () => {
       const name = document.getElementById("edit-org-name").value.trim();
       const slug = document.getElementById("edit-org-slug").value.trim();
+      const contact_email = document.getElementById("edit-org-contact-email").value.trim();
+      const contact_phone = document.getElementById("edit-org-contact-phone").value.trim();
+      const notes = document.getElementById("edit-org-notes").value.trim();
       if (!name) throw new Error("Organization name is required.");
 
-      await api("PATCH", `/superadmin/organizations/${orgId}`, { name, slug });
+      await api("PATCH", `/superadmin/organizations/${orgId}`, { name, slug, contact_email, contact_phone, notes });
       showToast("Organization updated successfully!", "success");
       await loadData();
     }
@@ -716,7 +765,14 @@ renderOrgsTable = function() {
 
   tbody.querySelectorAll("[data-edit-org]").forEach(btn => {
     btn.addEventListener("click", () => {
-      openEditOrgModal(btn.dataset.editOrg, btn.dataset.name, btn.dataset.slug);
+      openEditOrgModal(
+        btn.dataset.editOrg,
+        btn.dataset.name,
+        btn.dataset.slug,
+        btn.dataset.contactEmail || "",
+        btn.dataset.contactPhone || "",
+        btn.dataset.notes || ""
+      );
     });
   });
 
@@ -739,44 +795,12 @@ document.querySelectorAll("[data-user-filter]").forEach(btn => {
 });
 
 loadData();
-        }
-      });
-    });
-  });
-
-  // Attach view details events
-  tbody.querySelectorAll("[data-view-org]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const org = rawOrgs.find(x => x.id === btn.dataset.viewOrg);
-      if (!org) return;
-      showModal({
-        title: org.name,
-        bodyHtml: `
-          <div style="display:grid;gap:12px;font-size:0.92rem">
-            <div><small class="meta">ORGANIZATION ID</small><br><code>${org.id}</code></div>
-            <div><small class="meta">SLUG</small><br><code>/${escapeHtml(org.slug)}</code></div>
-            <div><small class="meta">CURRENT STATUS</small><br><span class="badge badge-${badgeClass(org.status)}">${org.status}</span></div>
-            <div><small class="meta">PRIMARY ADMIN EMAIL</small><br><strong>${escapeHtml(org.admin_email || "None")}</strong></div>
-            <div><small class="meta">TOTAL MEMBERS</small><br><strong>${org.member_count}</strong></div>
-            <div><small class="meta">TOTAL ELECTIONS</small><br><strong>${org.election_count}</strong></div>
-            <div><small class="meta">REGISTERED ON</small><br>${fmtDate(org.created_at)} (${fmtTimeAgo(org.created_at)})</div>
-          </div>
-        `,
-        confirmText: "Close",
-        cancelText: "",
-      });
-    });
-  });
-}
 
 function actionBtnFor(o) {
-  if (o.status === "pending") {
-    return `<button class="btn btn-sm btn-primary" data-set-status="active" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Approve</button>`;
-  }
   if (o.status === "active") {
     return `<button class="btn btn-sm btn-danger" data-set-status="suspended" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Suspend</button>`;
   }
-  return `<button class="btn btn-sm btn-ghost" data-set-status="active" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Reinstate</button>`;
+  return `<button class="btn btn-sm btn-ghost" data-set-status="active" data-id="${o.id}" data-name="${escapeHtml(o.name)}">Resume</button>`;
 }
 
 function badgeClass(status) {

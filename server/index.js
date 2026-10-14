@@ -13,10 +13,14 @@ const voteRoutes = require("./routes/votes");
 
 const isProduction = process.env.NODE_ENV === "production";
 if (isProduction) {
-  const required = ["DATABASE_URL", "JWT_SECRET", "APP_URL", "SMTP_HOST", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"];
+  const required = ["DATABASE_URL", "JWT_SECRET", "APP_URL"];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length) throw new Error(`Missing production environment variables: ${missing.join(", ")}`);
   if (!process.env.APP_URL.startsWith("https://")) throw new Error("APP_URL must use HTTPS in production.");
+}
+
+if (!process.env.SMTP_HOST) {
+  console.warn("[email] SMTP_HOST not configured; verification emails and notifications are disabled.");
 }
 
 const app = express();

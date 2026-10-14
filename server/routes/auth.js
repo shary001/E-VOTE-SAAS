@@ -49,7 +49,7 @@ router.post("/register", registerLimiter, async (req, res) => {
       }
       const slug = slugify(organization_name) || randomToken().slice(0, 8);
       const orgResult = await client.query(
-        `insert into organizations (name, slug, status) values ($1, $2, 'pending') returning id`,
+        `insert into organizations (name, slug, status) values ($1, $2, 'active') returning id`,
         [organization_name.trim(), slug]
       );
       orgId = orgResult.rows[0].id;
@@ -73,32 +73,28 @@ router.post("/register", registerLimiter, async (req, res) => {
 
     const userResult = await client.query(
       `insert into users (organization_id, email, password_hash, full_name, role,
-                           email_verify_token, email_verify_expires,
+                           email_verified, email_verify_token, email_verify_expires,
                            email_verify_code_hash, email_verify_code_expires)
-       values ($1, lower($2), $3, $4, $5, $6, $7, $8, $9)
-       returning id, email, full_name, role, organization_id`,
+       values ($1, lower($2), $3, $4, $5, true, $6, $7, $8, $9)
+       returning id, email, full_name, role, organization_id, email_verified`,
       [orgId, email.trim(), passwordHash, full_name.trim(), role, token, expires, codeHash, codeExpires]
     );
 
     await client.query("COMMIT");
 
     const user = userResult.rows[0];
-    const emailResult = await sendVerificationEmail(user.email, user.full_name, token, code);
     await logAction(user.id, orgId, mode === "create_org" ? "organization.created" : "user.joined_organization");
 
     res.status(201).json({
-      message: emailResult.sent
-        ? mode === "create_org"
-          ? "Registration successful. Verify your email with the code we sent; your organization also awaits platform admin approval. Approval does not replace email verification."
-          : "Account created. Enter the verification code sent to your email before logging in."
-        : mode === "create_org"
-          ? "Registration successful, but the verification email could not be delivered. Use Resend code; email verification is still required, and your organization awaits platform admin approval."
-          : "Account created, but the verification email could not be delivered. Use Resend code on the verification page before logging in.",
-      verification_email_sent: emailResult.sent,
-      delivery_reason: emailResult.reason || null,
-      delivery_error: emailResult.error || null,
+      message: mode === "create_org"
+        ? "Registration successful. Your organization is active and your account is ready to log in."
+        : "Account created successfully. Your account is active and ready to log in.",
+      verification_email_sent: false,
+      delivery_reason: null,
+      delivery_error: null,
       email: user.email,
-      organization_pending: mode === "create_org",
+      organization_pending: false,
+      email_verified: true,
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -196,9 +192,6 @@ router.post("/login", loginLimiter, async (req, res) => {
   const user = rows[0];
   if (!user || !(await checkPassword(password, user.password_hash))) {
     return res.status(401).json({ error: "Incorrect email or password." });
-  }
-  if (!user.email_verified) {
-    return res.status(403).json({ error: "Please verify your email before logging in.", unverified: true });
   }
 
   const token = signToken(user);
